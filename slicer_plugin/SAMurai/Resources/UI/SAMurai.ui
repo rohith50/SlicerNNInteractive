@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+    <class>t_SegmentData</class>
+    <widget class="qMRMLWidget" name="t_SegmentData">
+        <property name="geometry">
+            <rect>
+                <x>0</x>
+                <y>0</y>
+            </rect>
+        </property>
+        <layout class="QGridLayout" name="gridLayout">
+            <item row="1" column="0" colspan="2">
+                <widget class="ctkCollapsibleButton" name="clbtnServer">
+                    <property name="cursor">
+                        <cursorShape>ArrowCursor</cursorShape>
+                    </property>
+                    <property name="text">
+                        <string>Server settings</string>
+                    </property>
+                    <property name="collapsed">
+                        <bool>false</bool>
+                    </property>
+                    <layout class="QGridLayout" name="gridLayout_5">
+                        <item row="0" column="0">
+                            <widget class="QLabel" name="label">
+                                <property name="text">
+                                    <string>SAM2 server:</string>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="0" column="1">
+                            <widget class="QLineEdit" name="HostName">
+                                <property name="text">
+                                    <string>localhost:5565</string>
+                                </property>
+                            </widget>
+                        </item>
+                    </layout>
+                </widget>
+            </item>
+
+            <item row="2" column="0" colspan="2">
+                <widget class="ctkCollapsibleButton" name="clbtnSAM2Tools">
+                    <property name="cursor">
+                        <cursorShape>ArrowCursor</cursorShape>
+                    </property>
+                    <property name="text">
+                        <string>SAM2 Tools</string>
+                    </property>
+                    <property name="collapsed">
+                        <bool>false</bool>
+                    </property>
+                    <layout class="QGridLayout" name="gridLayout_5">
+                        <item row="1" column="0" colspan="2">
+                            <widget class="QLabel" name="labelPropagation">
+                                <property name="text">
+                                    <string>Slice propagation</string>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="2" column="0" colspan="2">
+                            <widget class="QFrame" name="line1">
+                                <property name="frameShape">
+                                    <enum>QFrame::HLine</enum>
+                                </property>
+                                <property name="frameShadow">
+                                    <enum>QFrame::Sunken</enum>
+                                </property>
+                            </widget>
+                        </item>
+                        <item row="3" column="0" colspan="2">
+                            <layout class="QHBoxLayout" name="horizontalLayout_propagation">
+                                <item>
+                                    <widget class="QLabel" name="labelMin">
+                                        <property name="text">
+                                            <string>Min (1)</string>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <widget class="QLineEdit" name="MinSlicePropagate">
+                                        <property name="maximumWidth">
+                                            <number>80</number> <!-- Set width to 40% of original -->
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <spacer name="horizontalSpacer2">
+                                        <property name="orientation">
+                                            <enum>Qt::Horizontal</enum>
+                                        </property>
+                                        <property name="sizeHint">
+                                            <size>
+                                                <width>2</width> <!-- Adjust width as needed to
+                                                create spacing -->
+                                                <height>0</height>
+                                            </size>
+                                        </property>
+                                    </spacer>
+                                </item>
+                                <item>
+                                    <widget class="QLabel" name="labelMax">
+                                        <property name="text">
+                                            <string>Max (2)</string>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <widget class="QLineEdit" name="MaxSlicePropagate">
+                                        <property name="maximumWidth">
+                                            <number>80</number> <!-- Set width to 40% of original -->
+                                        </property>
+                                    </widget>
+                                </item>
+                                <item>
+                                    <spacer name="horizontalSpacer1">
+                                        <property name="orientation">
+                                            <enum>Qt::Horizontal</enum>
+                                        </property>
+                                        <property name="sizeHint">
+                                            <size>
+                                                <width>10</width> <!-- Adjust width as needed to
+                                                create spacing -->
+                                                <height>0</height>
+                                            </size>
+                                        </property>
+                                    </spacer>
+                                </item>
+                            </layout>
+                        </item>
+                        <item row="15" column="0" colspan="2">
+                            <widget class="QPushButton" name="pbPropagate">
+                                <property name="text">
+                                    <string>Propagate (W)</string>
+                                </property>
+                            </widget>
+                        </item>
+
+                        <item row="16" column="0" colspan="2">
+                            <widget class="QFrame" name="line1">
+                                <property name="frameShape">
+                                    <enum>QFrame::HLine</enum>
+                                </property>
+                                <property name="frameShadow">
+                                    <enum>QFrame::Sunken</enum>
+                                </property>
+                            </widget>
+                        </item>
+                    </layout>
+                </widget>
+            </item>
+            <item row="3" column="0" colspan="2">
+                <widget class="ctkCollapsibleButton" name="clbtnOperation">
+                    <property name="cursor">
+                        <cursorShape>ArrowCursor</cursorShape>
+                    </property>
+                    <property name="text">
+                        <string>Start Segmentation</string>
+                    </property>
+                    <layout class="QGridLayout" name="gridLayout_0"></layout>
+                </widget>
+            </item>
+
+        </layout>
+    </widget>
+</ui>
