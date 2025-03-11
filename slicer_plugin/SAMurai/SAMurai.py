@@ -240,7 +240,11 @@ class SAMuraiWidget(ScriptedLoadableModuleWidget):
         self.ui.clbtnOperation.layout().addWidget(self.editor, 1, 0, 1, 2)
         self.segment_editor_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentEditorNode")
         self.editor.setMRMLSegmentEditorNode(self.segment_editor_node)
-        self.segmentation_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
+        seg_nodes = slicer.util.getNodesByClass("vtkMRMLSegmentationNode")
+        if seg_nodes:
+            self.segmentation_node = seg_nodes[-1]
+        else:
+            self.segmentation_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
         self.editor.setSegmentationNode(self.segmentation_node)
     
     def add_module_icon_to_toolbar(self):
