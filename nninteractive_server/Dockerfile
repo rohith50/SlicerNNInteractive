@@ -11,9 +11,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y wget
 
-RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /home/kasm-user/miniconda.sh && \
-    bash /home/kasm-user/miniconda.sh -b -p /opt/conda && \
-    rm /home/kasm-user/miniconda.sh && \
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /home/user/miniconda.sh && \
+    bash /home/user/miniconda.sh -b -p /opt/conda && \
+    rm /home/user/miniconda.sh && \
     /opt/conda/bin/conda clean -afy
 
 
