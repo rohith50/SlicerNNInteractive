@@ -29,7 +29,7 @@ app = FastAPI()
 # --- Download Trained Model Weights (~400MB) ---
 REPO_ID = "nnInteractive/nnInteractive"
 MODEL_NAME = "nnInteractive_v1.0"  # Updated models may be available in the future
-DOWNLOAD_DIR = "/home/user/temp"  # Specify the download directory
+DOWNLOAD_DIR = "/opt/server/temp"  # Specify the download directory
 
 
 class PromptManager:

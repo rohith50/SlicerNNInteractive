@@ -27,10 +27,19 @@ RUN /bin/bash -c "\
     conda clean -afy \
 "
 
+RUN /opt/conda/bin/conda install pip
 
 RUN /opt/conda/envs/nnInteractive/bin/python3.12 -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
 RUN /opt/conda/envs/nnInteractive/bin/python3.12 -m pip install nninteractive
 
+WORKDIR /opt/server
+
+COPY samurai_server.py samurai_server.py
+COPY requirements.txt requirements.txt
+
+RUN /opt/conda/envs/nnInteractive/bin/python3.12 -m pip install -r requirements.txt
+
+RUN /opt/conda/envs/nnInteractive/bin/python3.12 -m pip  list
 
 # # Upgrade pip
 # RUN python3 -m pip install --upgrade pip
@@ -42,12 +51,14 @@ RUN /opt/conda/envs/nnInteractive/bin/python3.12 -m pip install nninteractive
 # RUN git clone https://github.com/MIC-DKFZ/nnInteractive.git /opt/nnInteractive
 
 # Install nnInteractive in editable mode
-RUN pip install -e /opt/nnInteractive
+# RUN pip install -e /opt/nnInteractive
 
 # Set working directory
-WORKDIR /opt/nnInteractive
+# WORKDIR /opt/nnInteractive
+
+RUN useradd -m user && chown -R user:user /opt/server
 
 USER user
 
 # Default command: open an interactive Python shell
-CMD ["python3", "samurai_server.py"]
+CMD ["/opt/conda/envs/nnInteractive/bin/python3.12", "samurai_server.py"]
