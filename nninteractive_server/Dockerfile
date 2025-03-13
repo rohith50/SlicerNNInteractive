@@ -18,7 +18,7 @@ RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -
 
 
 # Create and activate a conda environment (single RUN layer)
-RUN /bin/sh -c "\
+RUN /bin/bash -c "\
     source /opt/conda/etc/profile.d/conda.sh && \
     conda create -y -n nnInteractive python=3.12 -c conda-forge && \
     conda activate nnInteractive && \
