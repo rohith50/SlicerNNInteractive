@@ -1,0 +1,1 @@
+docker build -t samurai_server_interactive .
