@@ -24,5 +24,7 @@ RUN pip install -e /opt/nnInteractive
 # Set working directory
 WORKDIR /opt/nnInteractive
 
+USER user
+
 # Default command: open an interactive Python shell
 CMD ["python3", "samurai_server.py"]
