@@ -1,5 +1,5 @@
 # Use an NVIDIA CUDA runtime base image with Ubuntu 22.04
-FROM nvidia/cuda:12.6.0-cudnn8-runtime-ubuntu22.04
+FROM nvidia/cuda:12.1.0-devel-ubuntu20.04
 
 # Avoid interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
