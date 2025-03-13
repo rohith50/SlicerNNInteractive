@@ -4,19 +4,40 @@ FROM nvidia/cuda:12.1.0-devel-ubuntu20.04
 # Avoid interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install Python, pip, git, and other dependencies
-RUN apt-get update && \
-    apt-get install -y python3-pip git ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
+# # Install Python, pip, git, and other dependencies
+# RUN apt-get update && \
+#     apt-get install -y python3-pip git ca-certificates && \
+#     rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip
-RUN python3 -m pip install --upgrade pip
 
-# Install PyTorch with CUDA 12.6 support (as per nnInteractive instructions)
-RUN pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
 
-# Clone the nnInteractive repository into /opt/nnInteractive
-RUN git clone https://github.com/MIC-DKFZ/nnInteractive.git /opt/nnInteractive
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /home/kasm-user/miniconda.sh && \
+    bash /home/kasm-user/miniconda.sh -b -p /opt/conda && \
+    rm /home/kasm-user/miniconda.sh && \
+    /opt/conda/bin/conda clean -afy
+
+
+# Create and activate a conda environment (single RUN layer)
+RUN /bin/bash -c "\
+    source /opt/conda/etc/profile.d/conda.sh && \
+    conda create -y -n nnInteractive python=3.12 -c conda-forge && \
+    conda activate nnInteractive && \
+    conda clean -afy \
+"
+
+
+RUN /opt/conda/envs/nnInteractive/bin/python3.12 -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
+RUN /opt/conda/envs/nnInteractive/bin/python3.12 -m pip install nninteractive
+
+
+# # Upgrade pip
+# RUN python3 -m pip install --upgrade pip
+
+# # Install PyTorch with CUDA 12.6 support (as per nnInteractive instructions)
+# RUN pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
+
+# # Clone the nnInteractive repository into /opt/nnInteractive
+# RUN git clone https://github.com/MIC-DKFZ/nnInteractive.git /opt/nnInteractive
 
 # Install nnInteractive in editable mode
 RUN pip install -e /opt/nnInteractive
