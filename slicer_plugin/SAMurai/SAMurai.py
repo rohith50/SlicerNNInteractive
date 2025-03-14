@@ -11,80 +11,50 @@ import numpy as np
 
 import threading
 import time
-import zlib
 
 import io
 import gzip
 import requests
+import copy
 
 import importlib.util
+import time
 
 
 def ensure_synched(func):
     def inner(self, *args, **kwargs):
-        def compute_checksum():
-            try:
-                if 'xyz' in kwargs:
-                    x, y, z = kwargs['xyz']
-                else:
-                    x, y, z = None
-                
-                # Check if a sync is already in progress.
-                if getattr(self, "_sync_in_progress", False):
-                    print("Sync already in progress; skipping checksum computation.")
-                    return
-                self._sync_in_progress = True
+        # def compute_checksum():
+        try:                
+            if getattr(self, "_sync_in_progress", False):
+                print("Sync already in progress; skipping checksum computation.")
+                return
+            self._sync_in_progress = True
 
-                overall_start = time.time()
-                # 1. Retrieve image data, window, and level.
-                t0 = time.time()
-                result = self.get_image_data()  # Expected to return (image_data, window, level)
-                t1 = time.time()
-                if result is None:
-                    print("No volume node found")
-                    return
-                image_data, window, level = result
-                print(f"Time to get image data: {t1 - t0:.4f} seconds")
-                print(f"Window: {window}, Level: {level}")
+            image_data = self.get_image_data()
+            if image_data is None:
+                print("No volume node found")
+                return
+            segment_data = self.get_segment_data()
+            
+            old_image_data = self.previous_states.get("image_data", None)
+            if old_image_data is None or not np.all(old_image_data == image_data):
+                print("Image changed (or not previously set). Calling sync_image_with_server()")
+                self.upload_image_to_server()
+            
+            old_segment_data = self.previous_states.get("segment_data", None)
+            if old_segment_data is None or not np.all(old_segment_data.astype(bool) == segment_data):
+                print("Segment changed (or not previously set). Calling sync_segment_with_server()")
+                self.upload_segment_to_server()
                 
-                t2 = time.time()
-                image_bytes = image_data[::10, ::10, ::10].tobytes()
-                t3 = time.time()
-                print(f"Time to create byte representation: {t3 - t2:.4f} seconds")
-                
-                # 2. Convert window and level to bytes.
-                window_bytes = str(window).encode("utf-8")
-                level_bytes = str(level).encode("utf-8")
-                
-                import xxhash
-
-                # 3. Compute xxhash over the image bytes and update with window and level.
-                t4 = time.time()
-                hasher = xxhash.xxh64()
-                hasher.update(image_bytes)
-                hasher.update(window_bytes)
-                hasher.update(level_bytes)
-                hash_value = hasher.intdigest()
-                t5 = time.time()
-                print("Current image xxhash:", format(hash_value, '016x'))
-                print(f"xxhash computation took: {t5 - t4:.4f} seconds")
-                print(f"Total computation time: {t5 - overall_start:.4f} seconds")
-                
-                # 4. Check the previous state and sync if needed.
-                old_hash = self.previous_states.get("image_crc", None)
-                if old_hash is None or old_hash != hash_value:
-                    print("Image changed (or not previously set). Calling sync_image_with_server()")
-                    self.upload_image_to_server(z=z)
-                else:
-                    print("Image unchanged.")
-                # Update the previous state.
-                self.previous_states["image_crc"] = hash_value
-            except Exception as e:
-                print("Error in ensure_synched:", e)
-            finally:
-                self._sync_in_progress = False
-        threading.Thread(target=compute_checksum, daemon=True).start()
-        return func(self, *args, **kwargs)
+            self.previous_states["image_data"] = copy.deepcopy(image_data)
+            self.previous_states["segment_data"] = copy.deepcopy(segment_data)
+        except Exception as e:
+            print("Error in ensure_synched:", e)
+        finally:
+            self._sync_in_progress = False
+            
+            return func(self, *args, **kwargs)
+        # threading.Thread(target=compute_checksum, daemon=True).start()
     return inner
 
 def convert_device_to_image_pixel(sliceWidget):
@@ -151,7 +121,8 @@ class SAMuraiWidget(ScriptedLoadableModuleWidget):
         
     def install_dependencies(self):
         dependencies = {
-            'xxhash': 'xxhash==3.5.0'
+            'xxhash': 'xxhash==3.5.0',
+            'requests_toolbelt': 'requests_toolbelt==1.0.0'
         }
 
         for dependency in dependencies:
@@ -209,8 +180,8 @@ class SAMuraiWidget(ScriptedLoadableModuleWidget):
         Install a Qt event filter on the Red, Green, and Yellow slice views.
         The filter tracks key press/release events to update a flag.
         When a mouse button press occurs:
-          - If the left button is pressed with Meta (or Control) held, print the x,y,z location and trigger positive_point_prompt().
-          - If the right button is pressed with Meta (or Control) held, do the same and trigger negative_point_prompt().
+          - If the left button is pressed with Meta (or Control) held, print the x,y,z location and trigger point_prompt().
+          - If the right button is pressed with Meta (or Control) held, do the same and trigger point_prompt().
         """        
         self._qt_event_filters = []
         self._meta_pressed = False
@@ -236,16 +207,22 @@ class SAMuraiWidget(ScriptedLoadableModuleWidget):
 
         self.editor = qSlicerSegmentationsModuleWidgetsPythonQt.qMRMLSegmentEditorWidget()
         self.editor.setMaximumNumberOfUndoStates(10)
+        
+        segment_editor_singleton_tag = "SegmentEditor"
+        self.segment_editor_node = slicer.mrmlScene.GetSingletonNode(
+            segment_editor_singleton_tag, "vtkMRMLSegmentEditorNode"
+        )
+        
+        if self.segment_editor_node is None:
+            self.segment_editor_node = slicer.mrmlScene.CreateNodeByClass("vtkMRMLSegmentEditorNode")
+            self.segment_editor_node.UnRegister(None)
+            self.segment_editor_node.SetSingletonTag(segment_editor_singleton_tag)
+            self.segment_editor_node = slicer.mrmlScene.AddNode(self.segment_editor_node)
+        
+        self.editor.setMRMLSegmentEditorNode(self.segment_editor_node)
+        
         self.editor.setMRMLScene(slicer.mrmlScene)
         self.ui.clbtnOperation.layout().addWidget(self.editor, 1, 0, 1, 2)
-        self.segment_editor_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentEditorNode")
-        self.editor.setMRMLSegmentEditorNode(self.segment_editor_node)
-        seg_nodes = slicer.util.getNodesByClass("vtkMRMLSegmentationNode")
-        if seg_nodes:
-            self.segmentation_node = seg_nodes[-1]
-        else:
-            self.segmentation_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
-        self.editor.setSegmentationNode(self.segmentation_node)
     
     def add_module_icon_to_toolbar(self):
         toolbar = slicer.util.mainWindow().findChild(qt.QToolBar, "ModuleSelectorToolBar")
@@ -263,8 +240,7 @@ class SAMuraiWidget(ScriptedLoadableModuleWidget):
         action.triggered.connect(lambda: slicer.util.selectModule("SAMurai"))
         toolbar.addAction(action)
     
-    def get_image_data(self):
-        # Get the current volume node (adjust as needed if you have multiple volumes)
+    def get_volume_node(self):
         volume_nodes = slicer.util.getNodesByClass("vtkMRMLScalarVolumeNode")
         
         if not volume_nodes:
@@ -272,97 +248,211 @@ class SAMuraiWidget(ScriptedLoadableModuleWidget):
         
         volume_node = volume_nodes[0]
         
+        return volume_node
+    
+    def get_image_data(self):
+        # Get the current volume node (adjust as needed if you have multiple volumes)
+        volume_node = self.get_volume_node()
+        
         image_data = slicer.util.arrayFromVolume(volume_node)
-        display_node = volume_node.GetDisplayNode()
         
-        # Capture the current window/level settings
-        window = display_node.GetWindow()
-        level = display_node.GetLevel()
+        return image_data
+    
+    def get_segment_data(self):
+        segmentation_node, selected_segment_id = self.get_selected_segmentation_node_and_segment_id()
         
-        return image_data, window, level
+        mask = slicer.util.arrayFromSegmentBinaryLabelmap(segmentation_node, selected_segment_id, self.get_volume_node())
+        seg_data_bool = mask.astype(bool)
+        
+        return seg_data_bool
 
-    def upload_image_to_server(self, z=None):
+    def upload_image_to_server(self):
         """
         Upload the current image data to a FastAPI endpoint in a separate thread.
         This function retrieves the image data, window, and level; converts the image data
         to a Base64-encoded string; and then makes a POST request to a fictive endpoint.
         """
-        def _upload():
-            print("Syncing image with server...")
-            try:
-                # Retrieve image data, window, and level.
-                t0 = time.time()
-                result = self.get_image_data()  # Expected to return (image_data, window, level)
-                print('self.get_image_data took', time.time() - t0)
-                
-                if result is None:
-                    print("No image data available to upload.")
-                    return
-                
-                t0 = time.time()
-                image_data, window, level = result
-                if z is not None:
-                    image_data = image_data[z]
-                
-                print('image_data.shape:', image_data.shape)
-                print('241 took', time.time() - t0)
-                t0 = time.time()
-                
-                # Adjust the image based on the new window/level settings
-                lower_bound, upper_bound = level - window / 2, level + window / 2
-                image_data_pre = np.clip(image_data, lower_bound, upper_bound)
-                image_data_pre = (
-                    (image_data_pre - np.min(image_data_pre))
-                    / (np.max(image_data_pre) - np.min(image_data_pre))
-                    * 255.0
-                )
-                image_data_pre = np.uint8(image_data_pre)
-                
-                print('norm took', time.time() - t0)
-                t0 = time.time()
-                
-                buffer = io.BytesIO()
-                np.save(buffer, image_data_pre)
-                compressed_data = gzip.compress(buffer.getvalue())
-                print('len(compressed_data):', len(compressed_data))
-                
-                files = {
-                    'file': ('volume.npy.gz', compressed_data, 'application/octet-stream')
-                }
-                
-                data = {
-                    'z': z
-                }
+        # def _upload():
+        print("Syncing image with server...")
+        try:
+            # Retrieve image data, window, and level.
+            t0 = time.time()
+            image_data = self.get_image_data()  # Expected to return (image_data, window, level)
+            print('self.get_image_data took', time.time() - t0)
+            
+            if image_data is None:
+                print("No image data available to upload.")
+                return
+            
+            t0 = time.time()
+            
+            buffer = io.BytesIO()
+            np.save(buffer, image_data)
+            compressed_data = gzip.compress(buffer.getvalue())
+            print('len(compressed_data):', len(compressed_data))
+            
+            files = {
+                'file': ('volume.npy.gz', compressed_data, 'application/octet-stream')
+            }
 
-                print("Uploading payload to server...")
-                url = "http://0.0.0.0:1526/api/upload_image"  # Update this with your actual endpoint.
-                
-                print('271 took', time.time() - t0)
-                t0 = time.time()
-                
-                response = requests.post(
-                    url,
-                    files=files,
-                    data=data,
-                    headers={"Content-Encoding": "gzip"}
-                )
-                print('Response took', time.time() - t0)
-                
-                if response.status_code == 200:
-                    print("Image successfully uploaded to server.")
-                else:
-                    print("Image upload failed with status code:", response.status_code)
-            except Exception as e:
-                print("Error in upload_image_to_server:", e)
-        threading.Thread(target=_upload, daemon=True).start()
+            print("Uploading payload to server...")
+            url = "http://sunflare:1527/upload_image"  # Update this with your actual endpoint.
+            print('url:', url, '!!!!!')
+            
+            print('271 took', time.time() - t0)
+            t0 = time.time()
+            
+            response = requests.post(
+                url,
+                files=files,
+                headers={"Content-Encoding": "gzip"}
+            )
+            print('Response took', time.time() - t0)
+            
+            if response.status_code == 200:
+                print("Image successfully uploaded to server.")
+            else:
+                print("Image upload failed with status code:", response.status_code)
+        except Exception as e:
+            print("Error in upload_image_to_server:", e)
+
+    def upload_segment_to_server(self):
+        print("Syncing segment with server...")
+        try:
+            t0 = time.time()
+            segment_data = self.get_segment_data()  # Expected to return (image_data, window, level)
+            print('self.segment_data() took', time.time() - t0)
+            
+            t0 = time.time()
+            
+            buffer = io.BytesIO()
+            np.save(buffer, segment_data)
+            compressed_data = gzip.compress(buffer.getvalue())
+            print('len(compressed_data):', len(compressed_data))
+            
+            files = {
+                'file': ('volume.npy.gz', compressed_data, 'application/octet-stream')
+            }
+
+            print("Uploading payload to server...")
+            url = "http://sunflare:1527/upload_segment"  # Update this with your actual endpoint.
+            
+            t0 = time.time()
+            
+            response = requests.post(
+                url,
+                files=files,
+                headers={"Content-Encoding": "gzip"}
+            )
+            print('Response took', time.time() - t0)
+            
+            if response.status_code == 200:
+                print("Image successfully uploaded to server.")
+            else:
+                print("Image upload failed with status code:", response.status_code)
+        except Exception as e:
+            print("Error in upload_image_to_server:", e)
     
     @ensure_synched
-    def positive_point_prompt(self, xyz=None):
-        print("Positive point prompt triggered!", xyz)
+    def point_prompt(self, xyz=None, positive_click=False):
+        url = "http://sunflare:1527/add_point_interaction"
+        
+        seg_response = requests.post(
+            url, 
+            json={'voxel_coord': xyz[::-1],
+                  'positive_click': positive_click})
+        
+        unpacked_segmentation = self.unpack_binary_segmentation(seg_response.content, decompress=False)
+        print(seg_response)
+        print(f"{positive_click} point prompt triggered!", xyz)
+        
+        self.show_segmentation(unpacked_segmentation)
     
-    @ensure_synched
-    def negative_point_prompt(self, xyz=None):
-        print("Negative point prompt triggered!", xyz)
+    def unpack_binary_segmentation(self, binary_data, decompress=False):
+        """
+        Unpacks binary data (1 bit per voxel) into a full 3D numpy array (bool type).
+        
+        Parameters:
+            binary_data (bytes): The packed binary segmentation data.
+        
+        Returns:
+            np.ndarray: The unpacked 3D boolean numpy array.
+        """
+        if decompress:
+            binary_data = binary_data = gzip.decompress(binary_data)
+
+        if self.get_image_data() is None:
+            self.capture_image()
+
+        # Get the shape of the original volume (same as image_data shape)
+        vol_shape = self.get_image_data().shape
+        
+        # Calculate the total number of bits (voxels)
+        total_voxels = np.prod(vol_shape)
+        
+        # Unpack the binary data (convert from bytes to bits)
+        unpacked_bits = np.unpackbits(np.frombuffer(binary_data, dtype=np.uint8))
+        
+        # Trim any extra bits (in case the bit length is not perfectly divisible)
+        unpacked_bits = unpacked_bits[:total_voxels]
+        
+        # Reshape into the original volume shape
+        segmentation_mask = unpacked_bits.reshape(vol_shape).astype(np.bool_).astype(np.uint8)
+        
+        return segmentation_mask
+    
+    def show_segmentation(self, segmentation_mask):
+        t0 = time.time()
+        
+        self.previous_states['segment_data'] = segmentation_mask
+        
+        segmentationNode, selectedSegmentID = self.get_selected_segmentation_node_and_segment_id()
+        
+        slicer.util.updateSegmentBinaryLabelmapFromArray(
+            segmentation_mask, segmentationNode, selectedSegmentID, self.get_volume_node()
+        )
+
+        # Mark the segmentation as modified so the UI updates
+        segmentationNode.Modified()
+
+        segmentationNode.GetSegmentation().CollapseBinaryLabelmaps()
+        del segmentation_mask
+        
+        print('show_segmentation took', time.time() - t0)
+    
+    def get_selected_segmentation_node_and_segment_id(self):
+        """Retrieve the currently selected segmentation node and segment ID.
+        If no segmentation exists, it creates a new one.
+        """        
+        
+        # Get the current segmentation node (or create one if it doesn’t exist)
+        segmentationNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLSegmentationNode")
+        if segmentationNode is None:
+            segmentationNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
+            segmentationNode.SetReferenceImageGeometryParameterFromVolumeNode(self.get_volume_node())
+
+        # Retrieve the currently selected segment ID from the Segment Editor
+        segmentEditorNode = self.get_widget_segment_editor().mrmlSegmentEditorNode()
+        selectedSegmentID = self.get_current_segment_id()
+        # If no segment is selected, create a new segment
+        if not selectedSegmentID:
+            # Generate a new segment name
+            segmentIDs = segmentationNode.GetSegmentation().GetSegmentIDs()
+            if len(segmentIDs) == 0:
+                newSegmentName = "Segment_1"
+            else:
+                # Find the next available number
+                segmentNumbers = [int(seg.split('_')[-1]) for seg in segmentIDs if seg.startswith("Segment_") and seg.split('_')[-1].isdigit()]
+                nextSegmentNumber = max(segmentNumbers) + 1 if segmentNumbers else 1
+                newSegmentName = f"Segment_{nextSegmentNumber}"
+
+            # Create and add the new segment
+            newSegmentID = segmentationNode.GetSegmentation().AddEmptySegment(newSegmentName)
+            segmentEditorNode.SetSelectedSegmentID(newSegmentID)
+ 
+            return segmentationNode, newSegmentID
+
+        return segmentationNode, selectedSegmentID
     
     def get_widget_segment_editor(self):
         return slicer.modules.segmenteditor.widgetRepresentation().self().editor
@@ -390,10 +480,10 @@ class SAMuraiQtEventFilter(qt.QObject):
             if self.samurai_widget._meta_pressed:
                 xyz = convert_device_to_image_pixel(self.slice_widget)
                 if event.button() == qt.Qt.LeftButton:
-                    self.samurai_widget.positive_point_prompt(xyz=xyz)
+                    self.samurai_widget.point_prompt(xyz=xyz, positive_click=True)
                     return True
                 elif event.button() == qt.Qt.RightButton:
-                    self.samurai_widget.negative_point_prompt(xyz=xyz)
+                    self.samurai_widget.point_prompt(xyz=xyz, positive_click=False)
                     return True
         return False
 
