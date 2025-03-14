@@ -1,1 +1,1 @@
-docker build -t samurai_server .
+docker build -t nninteractive_slicer_server .

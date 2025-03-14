@@ -1,1 +1,1 @@
-# samurai-slicer-plugin
+# NNInteractiveSlicer plugin

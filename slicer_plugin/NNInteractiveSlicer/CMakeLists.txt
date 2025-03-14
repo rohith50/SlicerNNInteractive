@@ -1,4 +1,4 @@
-set(MODULE_NAME "SAMurai")
+set(MODULE_NAME "NNInteractiveSlicer")
 
 #-----------------------------------------------------------------------------
 # Configure the module

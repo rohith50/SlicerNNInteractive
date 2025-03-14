@@ -151,9 +151,9 @@ async def add_point_interaction(params: InferenceParams):
     positive_click = params.positive_click
     
     xyz = params.voxel_coord
-    zyx = xyz[::-1]
+    print('xyz:', xyz)
     
-    seg_result = PROMPT_MANAGER.add_point_interaction(zyx)
+    seg_result = PROMPT_MANAGER.add_point_interaction(xyz)
     
     segmentation_binary_data = segmentation_binary(seg_result, compress=True)
     print(f'Server whole infer function time: {time.time() - t}')
@@ -219,4 +219,4 @@ def segmentation_binary(seg_in, compress=False):
 
 
 if __name__ == "__main__":
-    uvicorn.run("samurai_server:app", host="0.0.0.0", port=1527)
+    uvicorn.run("nninteractive_slicer_server:app", host="0.0.0.0", port=1527)

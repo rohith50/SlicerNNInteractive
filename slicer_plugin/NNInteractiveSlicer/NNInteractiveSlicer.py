@@ -85,13 +85,13 @@ def convert_device_to_image_pixel(sliceWidget):
 
 
 #
-# SAMurai
+# NNInteractiveSlicer
 #
 
-class SAMurai(ScriptedLoadableModule):
+class NNInteractiveSlicer(ScriptedLoadableModule):
     def __init__(self, parent):
         ScriptedLoadableModule.__init__(self, parent)
-        self.parent.title = _("SAMurai")
+        self.parent.title = _("NNInteractiveSlicer")
         self.parent.categories = [translate("qSlicerAbstractCoreModule", "Segmentation")]
         self.parent.dependencies = []  # List other modules if needed
         self.parent.contributors = ["Coen de Vente"]
@@ -101,13 +101,13 @@ class SAMurai(ScriptedLoadableModule):
         self.parent.acknowledgementText = ""
 
 
-class SAMuraiWidget(ScriptedLoadableModuleWidget):
+class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     def setup(self):
         ScriptedLoadableModuleWidget.setup(self)
         
         self.install_dependencies()
         
-        ui_widget = slicer.util.loadUI(self.resourcePath("UI/SAMurai.ui"))
+        ui_widget = slicer.util.loadUI(self.resourcePath("UI/NNInteractiveSlicer.ui"))
         self.layout.addWidget(ui_widget)
         self.ui = slicer.util.childWidgetVariables(ui_widget)
         
@@ -193,12 +193,12 @@ class SAMuraiWidget(ScriptedLoadableModuleWidget):
             # Get the slice view widget (a Qt widget)
             slice_view = slice_widget.sliceView()
             # Create the event filter and pass the slice widget for coordinate conversion.
-            event_filter = SAMuraiQtEventFilter(self, slice_widget)
+            event_filter = NNInteractiveSlicerQtEventFilter(self, slice_widget)
             slice_view.installEventFilter(event_filter)
             self._qt_event_filters.append((slice_view, event_filter))
         
         main_window = slicer.util.mainWindow()
-        event_filter = SAMuraiQtEventFilterMainWindow(self, main_window)
+        event_filter = NNInteractiveSlicerQtEventFilterMainWindow(self, main_window)
         main_window.installEventFilter(event_filter)
         self._qt_event_filters.append((main_window, event_filter))
     
@@ -231,13 +231,13 @@ class SAMuraiWidget(ScriptedLoadableModuleWidget):
             return
 
         for existing_action in toolbar.actions():
-            if existing_action.objectName == "samurai_action":
+            if existing_action.objectName == "nninteractive_slicer_action":
                 return
 
-        action = qt.QAction(qt.QIcon(self.resourcePath("Icons/SAMurai.png")), "SAMurai", toolbar)
-        action.setObjectName("samurai_action")
-        action.setToolTip("Switch to SAMurai module")
-        action.triggered.connect(lambda: slicer.util.selectModule("SAMurai"))
+        action = qt.QAction(qt.QIcon(self.resourcePath("Icons/NNInteractiveSlicer.png")), "NNInteractiveSlicer", toolbar)
+        action.setObjectName("nninteractive_slicer_action")
+        action.setToolTip("Switch to NNInteractiveSlicer module")
+        action.triggered.connect(lambda: slicer.util.selectModule("NNInteractiveSlicer"))
         toolbar.addAction(action)
     
     def get_volume_node(self):
@@ -469,36 +469,36 @@ class SAMuraiWidget(ScriptedLoadableModuleWidget):
         return
 
 
-class SAMuraiQtEventFilter(qt.QObject):
-    def __init__(self, samurai_widget, slice_widget):
-        super(SAMuraiQtEventFilter, self).__init__()
-        self.samurai_widget = samurai_widget
+class NNInteractiveSlicerQtEventFilter(qt.QObject):
+    def __init__(self, nninteractive_slicer_widget, slice_widget):
+        super(NNInteractiveSlicerQtEventFilter, self).__init__()
+        self.nninteractive_slicer_widget = nninteractive_slicer_widget
         self.slice_widget = slice_widget
 
     def eventFilter(self, obj, event):
         if event.type() == qt.QEvent.MouseButtonPress:
-            if self.samurai_widget._meta_pressed:
+            if self.nninteractive_slicer_widget._meta_pressed:
                 xyz = convert_device_to_image_pixel(self.slice_widget)
                 if event.button() == qt.Qt.LeftButton:
-                    self.samurai_widget.point_prompt(xyz=xyz, positive_click=True)
+                    self.nninteractive_slicer_widget.point_prompt(xyz=xyz, positive_click=True)
                     return True
                 elif event.button() == qt.Qt.RightButton:
-                    self.samurai_widget.point_prompt(xyz=xyz, positive_click=False)
+                    self.nninteractive_slicer_widget.point_prompt(xyz=xyz, positive_click=False)
                     return True
         return False
 
 
-class SAMuraiQtEventFilterMainWindow(qt.QObject):
-    def __init__(self, samurai_widget, slice_widget):
-        super(SAMuraiQtEventFilterMainWindow, self).__init__()
-        self.samurai_widget = samurai_widget
+class NNInteractiveSlicerQtEventFilterMainWindow(qt.QObject):
+    def __init__(self, nninteractive_slicer_widget, slice_widget):
+        super(NNInteractiveSlicerQtEventFilterMainWindow, self).__init__()
+        self.nninteractive_slicer_widget = nninteractive_slicer_widget
         self.slice_widget = slice_widget
 
     def eventFilter(self, obj, event):
         if event.type() == qt.QEvent.KeyPress:
             if event.key() in [qt.Qt.Key_Meta, qt.Qt.Key_Control]:
-                self.samurai_widget._meta_pressed = True
+                self.nninteractive_slicer_widget._meta_pressed = True
         elif event.type() == qt.QEvent.KeyRelease:
             if event.key() in [qt.Qt.Key_Meta, qt.Qt.Key_Control]:
-                self.samurai_widget._meta_pressed = False
+                self.nninteractive_slicer_widget._meta_pressed = False
         return False
