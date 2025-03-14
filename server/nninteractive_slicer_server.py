@@ -64,8 +64,12 @@ class PromptManager:
         return session
     
     def set_image(self, input_image):
-        # input_image is sitk.Image
-        self.img = sitk.GetArrayFromImage(input_image)[None]  # Ensure shape (1, x, y, z)
+        self.session.reset_interactions()
+        
+        self.img = input_image[None]  # Ensure shape (1, x, y, z)
+        self.session.set_image(self.img)
+        
+        print('self.img.shape:', self.img.shape)
         
         # Validate input dimensions
         if self.img.ndim != 4:
@@ -74,11 +78,20 @@ class PromptManager:
         self.target_tensor = torch.zeros(self.img.shape[1:], dtype=torch.uint8)  # Must be 3D (x, y, z)
         self.session.set_target_buffer(self.target_tensor)
     
-    def add_point_interaction(self, point_coordinates):
+    def set_segment(self, mask):
+        if np.sum(mask) == 0:
+            self.session.reset_interactions()
+            self.target_tensor = torch.zeros(self.img.shape[1:], dtype=torch.uint8)  # Must be 3D (x, y, z)
+            self.session.set_target_buffer(self.target_tensor)
+        else:
+            self.session.add_initial_seg_interaction(mask)
+    
+    def add_point_interaction(self, point_coordinates, include_interaction):
         # point_coordinates is (x, y, z)
-        self.session.add_point_interaction(point_coordinates, include_interaction=True)
+        print('point_coordinates:', point_coordinates)
+        self.session.add_point_interaction(point_coordinates, include_interaction=include_interaction)
         
-        return self.target_tensor
+        return self.target_tensor.clone().cpu().detach().numpy()
 
 
 PROMPT_MANAGER = PromptManager()
@@ -100,7 +113,7 @@ def calculate_md5_array(image_data, xx=False):
 
 
 @app.post("/upload_image")
-async def set_image(
+async def upload_image(
     file: UploadFile = File(None),
 ):
     # Read the uploaded file bytes, then gzip-decompress
@@ -113,6 +126,38 @@ async def set_image(
     
     return {"status": "ok"}
 
+@app.post("/upload_segment")
+async def upload_segment(
+    file: UploadFile = File(None),
+):
+    # Read the uploaded file bytes, then gzip-decompress
+    file_bytes = await file.read()
+    decompressed = gzip.decompress(file_bytes)
+
+    # Load the numpy array from the decompressed data
+    arr = np.load(io.BytesIO(decompressed))
+    # PROMPT_MANAGER.set_target_tensor(arr)
+    
+    PROMPT_MANAGER.set_segment(arr)
+    
+    return {"status": "ok"}
+
+
+
+# @app.post("/set_mask")
+# async def set_mask(file: UploadFile = File(...)):
+#     print('doing mask prompt!')
+#     # Read the binary data
+#     binary_data = await file.read()
+
+#     vol_shape = PROMPT_MANAGER.target_tensor.shape
+
+#     mask_prompt = unpack_binary_segmentation(gzip.decompress(binary_data),
+#                                              vol_shape=vol_shape)
+
+#     PROMPT_MANAGER.target_tensor = torch.from_numpy(mask_prompt).astype(torch.uint8)
+    
+    
 @app.post("/print_hello")
 async def print_hello():
     print('Hello world')
@@ -144,7 +189,7 @@ class InferenceParams(BaseModel):
 @app.post("/add_point_interaction")
 async def add_point_interaction(params: InferenceParams):
     t = time.time()
-    if PROMPT_MANAGER.image is None:
+    if PROMPT_MANAGER.img is None:
         warnings.warn('There is no image in the server. Be sure to send it before')
         return []
     
@@ -154,6 +199,7 @@ async def add_point_interaction(params: InferenceParams):
     print('xyz:', xyz)
     
     seg_result = PROMPT_MANAGER.add_point_interaction(xyz)
+    seg_result = PROMPT_MANAGER.add_point_interaction(xyz, include_interaction=positive_click)
     
     segmentation_binary_data = segmentation_binary(seg_result, compress=True)
     print(f'Server whole infer function time: {time.time() - t}')
@@ -162,18 +208,6 @@ async def add_point_interaction(params: InferenceParams):
     return Response(content=segmentation_binary_data, media_type="application/octet-stream", headers={"Content-Encoding": "gzip"})
 
 
-@app.post("/set_mask")
-async def set_mask(file: UploadFile = File(...)):
-    print('doing mask prompt!')
-    # Read the binary data
-    binary_data = await file.read()
-
-    vol_shape = PROMPT_MANAGER.img.shape[:-1]
-
-    mask_prompt = unpack_binary_segmentation(gzip.decompress(binary_data),
-                                             vol_shape=vol_shape)
-
-    PROMPT_MANAGER.target_tensor = torch.from_numpy(mask_prompt).astype(torch.uint8)
 
 
     
