@@ -425,7 +425,7 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         If no segmentation exists, it creates a new one.
         """        
         
-        # Get the current segmentation node (or create one if it doesn’t exist)
+        # Get the current segmentation node (or create one if it does not exist)
         segmentationNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLSegmentationNode")
         if segmentationNode is None:
             segmentationNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
