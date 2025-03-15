@@ -114,11 +114,19 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.add_segmentation_widget()
         self.add_module_icon_to_toolbar()
         self.setup_shortcuts()
+        self.update_server()
+        self.init_ui_functionality()
         
         _ = self.get_current_segment_id()
         self.previous_states = {}
         self._sync_in_progress = False
-        
+    
+    def update_server(self):
+        self.server = self.ui.Server.text
+    
+    def init_ui_functionality(self):
+        self.ui.Server.editingFinished.connect(self.update_server)
+    
     def install_dependencies(self):
         dependencies = {
             'xxhash': 'xxhash==3.5.0',
@@ -296,8 +304,8 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             }
 
             print("Uploading payload to server...")
-            url = "http://sunflare:1527/upload_image"  # Update this with your actual endpoint.
-            print('url:', url, '!!!!!')
+            url = f"{self.server}/upload_image"  # Update this with your actual endpoint.
+            print('url:', url)
             
             print('271 took', time.time() - t0)
             t0 = time.time()
@@ -335,7 +343,7 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             }
 
             print("Uploading payload to server...")
-            url = "http://sunflare:1527/upload_segment"  # Update this with your actual endpoint.
+            url = f"{self.server}/upload_segment"  # Update this with your actual endpoint.
             
             t0 = time.time()
             
@@ -355,7 +363,7 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     
     @ensure_synched
     def point_prompt(self, xyz=None, positive_click=False):
-        url = "http://sunflare:1527/add_point_interaction"
+        url = f"{self.server}/add_point_interaction"
         
         seg_response = requests.post(
             url, 
