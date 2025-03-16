@@ -108,7 +108,7 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.ui = slicer.util.childWidgetVariables(ui_widget)
         
         # Flag to control point list visibility
-        self.show_prompt_lists = True
+        self.show_prompt_lists = False
         self.ui.pointListGroup.setVisible(self.show_prompt_lists)
         
         self.add_segmentation_widget()
