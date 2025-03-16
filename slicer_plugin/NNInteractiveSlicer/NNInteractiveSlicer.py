@@ -114,6 +114,7 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.add_segmentation_widget()
         self.add_module_icon_to_toolbar()
         self.setup_shortcuts()
+        self.setup_markups_points()
         self.update_server()
         self.init_ui_functionality()
         
@@ -126,6 +127,8 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     
     def init_ui_functionality(self):
         self.ui.Server.editingFinished.connect(self.update_server)
+        self.ui.pbPositivePoint.clicked.connect(self.on_positive_point_clicked)
+        self.ui.pbNegativePoint.clicked.connect(self.on_negative_point_clicked)
     
     def install_dependencies(self):
         dependencies = {
@@ -228,9 +231,27 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             self.segment_editor_node = slicer.mrmlScene.AddNode(self.segment_editor_node)
         
         self.editor.setMRMLSegmentEditorNode(self.segment_editor_node)
-        
         self.editor.setMRMLScene(slicer.mrmlScene)
-        self.ui.clbtnOperation.layout().addWidget(self.editor, 1, 0, 1, 2)
+        
+        # Add the editor widget to the segmentation group
+        if hasattr(self.ui, 'segmentationGroup'):
+            # Create a new layout if needed
+            if self.ui.segmentationGroup.layout() is None:
+                layout = qt.QVBoxLayout(self.ui.segmentationGroup)
+                self.ui.segmentationGroup.setLayout(layout)
+            else:
+                layout = self.ui.segmentationGroup.layout()
+            
+            # Clear any existing widgets in the layout
+            while layout.count():
+                item = layout.takeAt(0)
+                if item.widget():
+                    item.widget().setParent(None)
+                    
+            # Add the editor widget
+            layout.addWidget(self.editor)
+        else:
+            print("Could not find segmentationGroup in UI")
     
     def add_module_icon_to_toolbar(self):
         toolbar = slicer.util.mainWindow().findChild(qt.QToolBar, "ModuleSelectorToolBar")
@@ -469,6 +490,218 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         segment_editor_widget = self.get_widget_segment_editor()
         return segment_editor_widget.mrmlSegmentEditorNode().GetSelectedSegmentID()
         
+    def cleanup(self):
+        if hasattr(self, "_qt_event_filters"):
+            for slice_view, event_filter in self._qt_event_filters:
+                slice_view.removeEventFilter(event_filter)
+            self._qt_event_filters = []
+        return
+
+    def setup_markups_points(self):
+        """Initialize the markups fiducial list for storing point prompts"""
+        # Remove any existing points nodes first to avoid duplicates
+        for node_name in ["PromptPointsPositive", "PromptPointsNegative"]:
+            existing_points = slicer.mrmlScene.GetNodesByName(node_name)
+            if existing_points and existing_points.GetNumberOfItems() > 0:
+                for i in range(existing_points.GetNumberOfItems()):
+                    slicer.mrmlScene.RemoveNode(existing_points.GetItemAsObject(i))
+        
+        # Create separate nodes for positive and negative points        
+        self.positive_points_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode", "PromptPointsPositive")
+        self.positive_points_node.CreateDefaultDisplayNodes()
+        
+        self.negative_points_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode", "PromptPointsNegative")
+        self.negative_points_node.CreateDefaultDisplayNodes()
+        
+        # Configure display properties for positive points (green)
+        pos_display_node = self.positive_points_node.GetDisplayNode()
+        pos_display_node.SetTextScale(0)  # Hide text labels
+        pos_display_node.SetGlyphScale(0.75)  # Make the points larger
+        pos_display_node.SetColor(0.0, 1.0, 0.0)  # Green color
+        pos_display_node.SetSelectedColor(0.0, 1.0, 0.0)
+        pos_display_node.SetOpacity(1.0)  # Fully opaque
+        pos_display_node.SetSliceProjection(False)  # Make points visible in all slice views
+        
+        # Configure display properties for negative points (red)
+        neg_display_node = self.negative_points_node.GetDisplayNode()
+        neg_display_node.SetTextScale(0)  # Hide text labels
+        neg_display_node.SetGlyphScale(0.75)  # Make the points larger
+        neg_display_node.SetColor(1.0, 0.0, 0.0)  # Red color
+        neg_display_node.SetSelectedColor(1.0, 0.0, 0.0)
+        neg_display_node.SetOpacity(1.0)  # Fully opaque
+        neg_display_node.SetSliceProjection(False)  # Make points visible in all slice views
+        # Track points
+        self.positive_points = []
+        self.negative_points = []
+        
+        # Clear the list widget
+        self.ui.pointListWidget.clear()
+        
+        # Setup for interactive placement
+        self.is_placing_positive = False
+        self.is_placing_negative = False
+        self.point_placement_observers = []
+        
+        # Flag to track if we've shown the placement mode warning
+        self.shown_placement_warning = False
+    
+    def on_positive_point_clicked(self):
+        """Start interactive placement of a positive point"""
+        if self.is_placing_positive or self.is_placing_negative:
+            # Already in placement mode, cancel current placement
+            self.stop_point_placement()
+            return
+            
+        # Enter positive point placement mode
+        print("Starting positive point placement - click in the view to place")
+        self.is_placing_positive = True
+        self.start_point_placement()
+    
+    def on_negative_point_clicked(self):
+        """Start interactive placement of a negative point"""
+        if self.is_placing_positive or self.is_placing_negative:
+            # Already in placement mode, cancel current placement
+            self.stop_point_placement()
+            return
+            
+        # Enter negative point placement mode
+        print("Starting negative point placement - click in the view to place")
+        self.is_placing_negative = True
+        self.start_point_placement()
+    
+    def start_point_placement(self):
+        """Enter point placement mode"""
+        markups_logic = slicer.modules.markups.logic()
+        
+        # Use the appropriate node based on what we're placing
+        active_node = self.positive_points_node if self.is_placing_positive else self.negative_points_node
+        markups_logic.SetActiveListID(active_node)
+        
+        # Try to enter placement mode
+        print("Starting placement mode...")
+        markups_logic.StartPlaceMode(False)
+        
+        # Make sure the input is active
+        active_node.SetLocked(False)
+        
+        # Clear any existing observers
+        for observer in self.point_placement_observers:
+            if observer[0]:
+                observer[0].RemoveObserver(observer[1])
+        self.point_placement_observers = []
+        
+        # Add observer to the active node
+        observer_id = active_node.AddObserver(slicer.vtkMRMLMarkupsNode.PointPositionDefinedEvent, 
+                                                   self.on_point_placed)
+        self.point_placement_observers.append((active_node, observer_id))
+        
+        print("Placement mode started successfully")
+    
+    def stop_point_placement(self):
+        """Exit point placement mode"""
+        print("Stopping placement mode...")
+        # Exit placement mode - try multiple methods for compatibility
+        try:
+            # Try various methods to stop place mode, as different versions use different methods
+            markups_logic = slicer.modules.markups.logic()
+            
+            # First try StopPlaceMode() (newer versions)
+            if hasattr(markups_logic, 'StopPlaceMode'):
+                markups_logic.StopPlaceMode()
+                print("Used StopPlaceMode()")
+            # Then try EndPlaceMode() (some versions)
+            elif hasattr(markups_logic, 'EndPlaceMode'):
+                markups_logic.EndPlaceMode()
+                print("Used EndPlaceMode()")
+            # Then try DeactivatePointModePlace() (older versions)
+            elif hasattr(markups_logic, 'DeactivatePointModePlace'):
+                markups_logic.DeactivatePointModePlace()
+                print("Used DeactivatePointModePlace()")
+            else:
+                # As a fallback, just print a warning once
+                if not hasattr(self, 'shown_placement_warning') or not self.shown_placement_warning:
+                    print("Warning: Could not find a method to stop place mode, but placement will still work")
+                    self.shown_placement_warning = True
+            
+            # Make sure the placement is actually stopped by deselecting the active node
+            # This is a common workaround when the explicit stop methods aren't available
+            markups_logic.SetActiveListID(None)
+            print("Set active list to None")
+        except Exception as e:
+            print(f"Error stopping place mode: {e}")
+            print("Placement functionality may still work")
+        
+        # Clean up observers
+        for observer in self.point_placement_observers:
+            try:
+                if observer[0] and observer[1]:
+                    observer[0].RemoveObserver(observer[1])
+            except Exception as e:
+                print(f"Error removing observer: {e}")
+        self.point_placement_observers = []
+            
+        print("Removed observers")
+        
+        # Reset placement flags
+        self.is_placing_positive = False
+        self.is_placing_negative = False
+        print("Placement mode stopped")
+    
+    def on_point_placed(self, caller, event):
+        """Called when a point is placed in the scene"""
+        # Add debug information to help diagnose issues
+        print(f"on_point_placed called with event: {event}")
+        
+        # Determine which node called this (positive or negative)
+        active_node = caller
+        is_positive = (active_node == self.positive_points_node)
+            
+        n = active_node.GetNumberOfControlPoints() - 1
+        if n < 0:
+            print("No control points found")
+            return
+            
+        # Get the position
+        pos = [0, 0, 0]
+        active_node.GetNthControlPointPosition(n, pos)
+        
+        # Set the point label
+        if is_positive:
+            point_id = len(self.positive_points) + 1
+            label_prefix = "P"
+            label_type = "Positive"
+        else:
+            point_id = len(self.negative_points) + 1
+            label_prefix = "N"
+            label_type = "Negative"
+            
+        active_node.SetNthControlPointLabel(n, f"{label_prefix}-{point_id}")
+        
+        # Lock the point to prevent accidental movement
+        active_node.SetNthControlPointLocked(n, True)
+        
+        # Store the point info
+        point_info = {'id': n, 'position': pos}
+        if is_positive:
+            self.positive_points.append(point_info)
+        else:
+            self.negative_points.append(point_info)
+        
+        # Add to list widget
+        self.ui.pointListWidget.addItem(f"{label_prefix}-{point_id}: {label_type} at ({pos[0]:.1f}, {pos[1]:.1f}, {pos[2]:.1f})")
+        
+        print(f"Added {label_type} point at: {pos}")
+        
+        # Make sure the point is visible in the scene
+        active_node.GetDisplayNode().SetVisibility(True)
+        active_node.SetDisplayVisibility(True)
+        
+        # Force scene update
+        slicer.mrmlScene.Modified()
+        
+        # Exit placement mode after placing a point
+        self.stop_point_placement()
+    
     def cleanup(self):
         if hasattr(self, "_qt_event_filters"):
             for slice_view, event_filter in self._qt_event_filters:

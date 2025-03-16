@@ -1,166 +1,187 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
-    <class>t_SegmentData</class>
-    <widget class="qMRMLWidget" name="t_SegmentData">
+    <class>NNInteractiveSlicer</class>
+    <widget class="qMRMLWidget" name="NNInteractiveSlicer">
         <property name="geometry">
             <rect>
                 <x>0</x>
                 <y>0</y>
+                <width>369</width>
+                <height>800</height>
             </rect>
         </property>
-        <layout class="QGridLayout" name="gridLayout">
-            <item row="1" column="0" colspan="2">
-                <widget class="ctkCollapsibleButton" name="clbtnServer">
-                    <property name="cursor">
-                        <cursorShape>ArrowCursor</cursorShape>
-                    </property>
-                    <property name="text">
-                        <string>Server settings</string>
-                    </property>
-                    <property name="collapsed">
-                        <bool>false</bool>
-                    </property>
-                    <layout class="QGridLayout" name="gridLayout_5">
-                        <item row="0" column="0">
-                            <widget class="QLabel" name="label">
-                                <property name="text">
-                                    <string>Server:</string>
-                                </property>
+        <property name="windowTitle">
+            <string>Form</string>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayout_2">
+            <item>
+                <layout class="QVBoxLayout" name="verticalLayout">
+                    <item alignment="Qt::AlignHCenter">
+                        <widget class="QLabel" name="title_label">
+                            <property name="font">
+                                <font>
+                                    <pointsize>18</pointsize>
+                                </font>
+                            </property>
+                            <property name="text">
+                                <string>NNInteractive Slicer</string>
+                            </property>
+                        </widget>
+                    </item>
+                    <item>
+                        <widget class="QTabWidget" name="tabWidget">
+                            <property name="currentIndex">
+                                <number>0</number>
+                            </property>
+                            <widget class="QWidget" name="tabConfig">
+                                <attribute name="title">
+                                    <string>Configuration</string>
+                                </attribute>
+                                <layout class="QVBoxLayout" name="verticalLayout_10">
+                                    <item>
+                                        <widget class="QGroupBox" name="serverGroup">
+                                            <property name="title">
+                                                <string>Server Settings</string>
+                                            </property>
+                                            <layout class="QVBoxLayout" name="verticalLayout_5">
+                                                <item>
+                                                    <layout class="QHBoxLayout" name="horizontalLayout_server">
+                                                        <item>
+                                                            <widget class="QLabel" name="label">
+                                                                <property name="text">
+                                                                    <string>Server URL:</string>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                        <item>
+                                                            <widget class="QLineEdit" name="Server">
+                                                                <property name="text">
+                                                                    <string>http://sunflare:1527</string>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                    </layout>
+                                                </item>
+                                            </layout>
+                                        </widget>
+                                    </item>
+                                    
+                                    <item>
+                                        <spacer name="verticalSpacer">
+                                            <property name="orientation">
+                                                <enum>Qt::Vertical</enum>
+                                            </property>
+                                            <property name="sizeHint" stdset="0">
+                                                <size>
+                                                    <width>20</width>
+                                                    <height>40</height>
+                                                </size>
+                                            </property>
+                                        </spacer>
+                                    </item>
+                                </layout>
                             </widget>
-                        </item>
-                        <item row="0" column="1">
-                            <widget class="QLineEdit" name="Server">
-                                <property name="text">
-                                    <string>http://sunflare:1527</string>
-                                </property>
+                            
+                            <widget class="QWidget" name="tabPrompts">
+                                <attribute name="title">
+                                    <string>nnInteractive Prompts</string>
+                                </attribute>
+                                <layout class="QVBoxLayout" name="verticalLayout_11">
+                                    <item>
+                                        <widget class="QGroupBox" name="pointPromptsGroup">
+                                            <property name="title">
+                                                <string>Point Prompts</string>
+                                            </property>
+                                            <layout class="QVBoxLayout" name="verticalLayout_12">
+                                                <item>
+                                                    <layout class="QHBoxLayout" name="horizontalLayout_points">
+                                                        <item>
+                                                            <widget class="QPushButton" name="pbPositivePoint">
+                                                                <property name="minimumSize">
+                                                                    <size>
+                                                                        <width>0</width>
+                                                                        <height>30</height>
+                                                                    </size>
+                                                                </property>
+                                                                <property name="toolTip">
+                                                                    <string>Add a positive point at current crosshair position (Ctrl+Left Click)</string>
+                                                                </property>
+                                                                <property name="text">
+                                                                    <string>Add Positive Point</string>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                        <item>
+                                                            <widget class="QPushButton" name="pbNegativePoint">
+                                                                <property name="minimumSize">
+                                                                    <size>
+                                                                        <width>0</width>
+                                                                        <height>30</height>
+                                                                    </size>
+                                                                </property>
+                                                                <property name="toolTip">
+                                                                    <string>Add a negative point at current crosshair position (Ctrl+Right Click)</string>
+                                                                </property>
+                                                                <property name="text">
+                                                                    <string>Add Negative Point</string>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                    </layout>
+                                                </item>
+                                            </layout>
+                                        </widget>
+                                    </item>
+                                    
+                                    <item>
+                                        <widget class="QGroupBox" name="pointListGroup">
+                                            <property name="title">
+                                                <string>Point List</string>
+                                            </property>
+                                            <property name="minimumSize">
+                                                <size>
+                                                    <width>0</width>
+                                                    <height>200</height>
+                                                </size>
+                                            </property>
+                                            <layout class="QVBoxLayout" name="verticalLayout_13">
+                                                <item>
+                                                    <widget class="QListWidget" name="pointListWidget">
+                                                        <property name="alternatingRowColors">
+                                                            <bool>true</bool>
+                                                        </property>
+                                                    </widget>
+                                                </item>
+                                            </layout>
+                                        </widget>
+                                    </item>
+                                </layout>
                             </widget>
-                        </item>
+                        </widget>
+                    </item>
+                </layout>
+            </item>
+            
+            <item>
+                <widget class="QGroupBox" name="segmentationGroup">
+                    <property name="title">
+                        <string>Segment Editor</string>
+                    </property>
+                    <layout class="QVBoxLayout" name="segmentEditorLayout">
+                        <!-- Segment Editor Widget will be inserted here programmatically -->
                     </layout>
                 </widget>
             </item>
-
-            <item row="2" column="0" colspan="2">
-                <widget class="ctkCollapsibleButton" name="clbtnSAM2Tools">
-                    <property name="cursor">
-                        <cursorShape>ArrowCursor</cursorShape>
-                    </property>
-                    <property name="text">
-                        <string>SAM2 Tools</string>
-                    </property>
-                    <property name="collapsed">
-                        <bool>false</bool>
-                    </property>
-                    <layout class="QGridLayout" name="gridLayout_5">
-                        <item row="1" column="0" colspan="2">
-                            <widget class="QLabel" name="labelPropagation">
-                                <property name="text">
-                                    <string>Slice propagation</string>
-                                </property>
-                            </widget>
-                        </item>
-                        <item row="2" column="0" colspan="2">
-                            <widget class="QFrame" name="line1">
-                                <property name="frameShape">
-                                    <enum>QFrame::HLine</enum>
-                                </property>
-                                <property name="frameShadow">
-                                    <enum>QFrame::Sunken</enum>
-                                </property>
-                            </widget>
-                        </item>
-                        <item row="3" column="0" colspan="2">
-                            <layout class="QHBoxLayout" name="horizontalLayout_propagation">
-                                <item>
-                                    <widget class="QLabel" name="labelMin">
-                                        <property name="text">
-                                            <string>Min (1)</string>
-                                        </property>
-                                    </widget>
-                                </item>
-                                <item>
-                                    <widget class="QLineEdit" name="MinSlicePropagate">
-                                        <property name="maximumWidth">
-                                            <number>80</number> <!-- Set width to 40% of original -->
-                                        </property>
-                                    </widget>
-                                </item>
-                                <item>
-                                    <spacer name="horizontalSpacer2">
-                                        <property name="orientation">
-                                            <enum>Qt::Horizontal</enum>
-                                        </property>
-                                        <property name="sizeHint">
-                                            <size>
-                                                <width>2</width> <!-- Adjust width as needed to
-                                                create spacing -->
-                                                <height>0</height>
-                                            </size>
-                                        </property>
-                                    </spacer>
-                                </item>
-                                <item>
-                                    <widget class="QLabel" name="labelMax">
-                                        <property name="text">
-                                            <string>Max (2)</string>
-                                        </property>
-                                    </widget>
-                                </item>
-                                <item>
-                                    <widget class="QLineEdit" name="MaxSlicePropagate">
-                                        <property name="maximumWidth">
-                                            <number>80</number> <!-- Set width to 40% of original -->
-                                        </property>
-                                    </widget>
-                                </item>
-                                <item>
-                                    <spacer name="horizontalSpacer1">
-                                        <property name="orientation">
-                                            <enum>Qt::Horizontal</enum>
-                                        </property>
-                                        <property name="sizeHint">
-                                            <size>
-                                                <width>10</width> <!-- Adjust width as needed to
-                                                create spacing -->
-                                                <height>0</height>
-                                            </size>
-                                        </property>
-                                    </spacer>
-                                </item>
-                            </layout>
-                        </item>
-                        <item row="15" column="0" colspan="2">
-                            <widget class="QPushButton" name="pbPropagate">
-                                <property name="text">
-                                    <string>Propagate (W)</string>
-                                </property>
-                            </widget>
-                        </item>
-
-                        <item row="16" column="0" colspan="2">
-                            <widget class="QFrame" name="line1">
-                                <property name="frameShape">
-                                    <enum>QFrame::HLine</enum>
-                                </property>
-                                <property name="frameShadow">
-                                    <enum>QFrame::Sunken</enum>
-                                </property>
-                            </widget>
-                        </item>
-                    </layout>
-                </widget>
-            </item>
-            <item row="3" column="0" colspan="2">
-                <widget class="ctkCollapsibleButton" name="clbtnOperation">
-                    <property name="cursor">
-                        <cursorShape>ArrowCursor</cursorShape>
-                    </property>
-                    <property name="text">
-                        <string>Start Segmentation</string>
-                    </property>
-                    <layout class="QGridLayout" name="gridLayout_0"></layout>
-                </widget>
-            </item>
-
         </layout>
     </widget>
+    <customwidgets>
+        <customwidget>
+            <class>qMRMLWidget</class>
+            <extends>QWidget</extends>
+            <header>qMRMLWidget.h</header>
+            <container>1</container>
+        </customwidget>
+    </customwidgets>
+    <resources/>
+    <connections/>
 </ui>
