@@ -30,24 +30,18 @@ def ensure_synched(func):
                 return
             self._sync_in_progress = True
 
-            image_data = self.get_image_data()
-            if image_data is None:
-                print("No volume node found")
-                return
-            segment_data = self.get_segment_data()
-            
-            old_image_data = self.previous_states.get("image_data", None)
-            if old_image_data is None or not np.all(old_image_data == image_data):
+            if self.image_changed():
                 print("Image changed (or not previously set). Calling sync_image_with_server()")
                 self.upload_image_to_server()
             
-            old_segment_data = self.previous_states.get("segment_data", None)
-            if old_segment_data is None or not np.all(old_segment_data.astype(bool) == segment_data):
+            selected_segment_changed = self.selected_segment_changed()
+            if 'override_selected_segment_changed' in kwargs and kwargs['override_selected_segment_changed'] is not None:
+                selected_segment_changed = kwargs['override_selected_segment_changed']
+            
+            if selected_segment_changed:
                 print("Segment changed (or not previously set). Calling sync_segment_with_server()")
                 self.upload_segment_to_server()
                 
-            self.previous_states["image_data"] = copy.deepcopy(image_data)
-            self.previous_states["segment_data"] = copy.deepcopy(segment_data)
         except Exception as e:
             print("Error in ensure_synched:", e)
         finally:
@@ -275,7 +269,7 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         if not volume_nodes:
             return None
         
-        volume_node = volume_nodes[0]
+        volume_node = volume_nodes[-1]
         
         return volume_node
     
@@ -383,7 +377,7 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             print("Error in upload_image_to_server:", e)
     
     @ensure_synched
-    def point_prompt(self, xyz=None, positive_click=False):
+    def point_prompt(self, xyz=None, positive_click=False, override_selected_segment_changed=None):
         url = f"{self.server}/add_point_interaction"
         
         seg_response = requests.post(
@@ -483,6 +477,26 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
 
         return segmentationNode, selectedSegmentID
     
+    def image_changed(self):
+        image_data = self.get_image_data()
+        if image_data is None:
+            print("No volume node found")
+            return
+        
+        old_image_data = self.previous_states.get("image_data", None)
+        image_changed =  old_image_data is None or not np.all(old_image_data == image_data)
+        self.previous_states["image_data"] = copy.deepcopy(image_data)
+
+        return image_changed
+
+    def selected_segment_changed(self):
+        segment_data = self.get_segment_data()
+        old_segment_data = self.previous_states.get("segment_data", None)
+        selected_segment_changed = old_segment_data is None or not np.all(old_segment_data.astype(bool) == segment_data)
+        self.previous_states["segment_data"] = copy.deepcopy(segment_data)
+
+        return selected_segment_changed
+
     def get_widget_segment_editor(self):
         return slicer.modules.segmenteditor.widgetRepresentation().self().editor
     
@@ -491,6 +505,9 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         return segment_editor_widget.mrmlSegmentEditorNode().GetSelectedSegmentID()
         
     def cleanup(self):
+        """Clean up resources when the module is closed"""
+        self.removeObservers()
+
         if hasattr(self, "_qt_event_filters"):
             for slice_view, event_filter in self._qt_event_filters:
                 slice_view.removeEventFilter(event_filter)
@@ -530,12 +547,8 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         neg_display_node.SetSelectedColor(1.0, 0.0, 0.0)
         neg_display_node.SetOpacity(1.0)  # Fully opaque
         neg_display_node.SetSliceProjection(False)  # Make points visible in all slice views
-        # Track points
-        self.positive_points = []
-        self.negative_points = []
-        
-        # Clear the list widget
-        self.ui.pointListWidget.clear()
+
+        self.clear_points()
         
         # Setup for interactive placement
         self.is_placing_positive = False
@@ -545,6 +558,14 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         # Flag to track if we've shown the placement mode warning
         self.shown_placement_warning = False
     
+    def clear_points(self):
+        # Track points
+        self.positive_points = []
+        self.negative_points = []
+        
+        # Clear the list widget
+        self.ui.pointListWidget.clear()
+
     def on_positive_point_clicked(self):
         """Start interactive placement of a positive point"""
         if self.is_placing_positive or self.is_placing_negative:
@@ -571,6 +592,11 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     
     def start_point_placement(self):
         """Enter point placement mode"""
+        selected_segment_changed = False
+        if self.selected_segment_changed():
+            selected_segment_changed = True
+            self.clear_points()
+
         markups_logic = slicer.modules.markups.logic()
         
         # Use the appropriate node based on what we're placing
@@ -592,7 +618,7 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
         # Add observer to the active node
         observer_id = active_node.AddObserver(slicer.vtkMRMLMarkupsNode.PointPositionDefinedEvent, 
-                                                   self.on_point_placed)
+                                              lambda a, b: self.on_point_placed(a, b, override_selected_segment_changed=selected_segment_changed))
         self.point_placement_observers.append((active_node, observer_id))
         
         print("Placement mode started successfully")
@@ -647,7 +673,7 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.is_placing_negative = False
         print("Placement mode stopped")
     
-    def on_point_placed(self, caller, event):
+    def on_point_placed(self, caller, event, override_selected_segment_changed=None):
         """Called when a point is placed in the scene"""
         # Add debug information to help diagnose issues
         print(f"on_point_placed called with event: {event}")
@@ -699,15 +725,28 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         # Force scene update
         slicer.mrmlScene.Modified()
         
+        # Convert RAS coordinates to IJK (voxel) coordinates
+        volumeNode = self.get_volume_node()
+        if volumeNode:
+            # Apply any transforms to get volume's RAS coordinates
+            transformRasToVolumeRas = vtk.vtkGeneralTransform()
+            slicer.vtkMRMLTransformNode.GetTransformBetweenNodes(None, volumeNode.GetParentTransformNode(), transformRasToVolumeRas)
+            point_VolumeRas = transformRasToVolumeRas.TransformPoint(pos)
+            
+            # Convert to IJK coordinates
+            volumeRasToIjk = vtk.vtkMatrix4x4()
+            volumeNode.GetRASToIJKMatrix(volumeRasToIjk)
+            point_Ijk = [0, 0, 0, 1]
+            volumeRasToIjk.MultiplyPoint(list(point_VolumeRas) + [1.0], point_Ijk)
+            xyz = [int(round(c)) for c in point_Ijk[0:3]]
+            
+            print(f"Converted point to voxel coordinates: {xyz}")
+            
+            # Call point_prompt with the voxel coordinates
+            self.point_prompt(xyz=xyz, positive_click=is_positive, override_selected_segment_changed=override_selected_segment_changed)
+        
         # Exit placement mode after placing a point
         self.stop_point_placement()
-    
-    def cleanup(self):
-        if hasattr(self, "_qt_event_filters"):
-            for slice_view, event_filter in self._qt_event_filters:
-                slice_view.removeEventFilter(event_filter)
-            self._qt_event_filters = []
-        return
 
 
 class NNInteractiveSlicerQtEventFilter(qt.QObject):
