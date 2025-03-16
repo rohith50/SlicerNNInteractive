@@ -105,6 +105,10 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.layout.addWidget(ui_widget)
         self.ui = slicer.util.childWidgetVariables(ui_widget)
         
+        # Flag to control point list visibility
+        self.show_prompt_lists = False
+        self.ui.pointListGroup.setVisible(self.show_prompt_lists)
+        
         self.add_segmentation_widget()
         self.add_module_icon_to_toolbar()
         self.setup_shortcuts()
@@ -121,8 +125,25 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     
     def init_ui_functionality(self):
         self.ui.Server.editingFinished.connect(self.update_server)
-        self.ui.pbPositivePoint.clicked.connect(self.on_positive_point_clicked)
-        self.ui.pbNegativePoint.clicked.connect(self.on_negative_point_clicked)
+        
+        # Set up style sheets for selected/unselected buttons
+        self.selected_style = "background-color: #3498db; color: white;"
+        self.unselected_style = ""
+        
+        # Set initial prompt type
+        self.current_prompt_type_positive = True
+        self.ui.pbPromptTypePositive.setStyleSheet(self.selected_style)
+        
+        # Connect Prompt Type buttons
+        self.ui.pbPromptTypePositive.clicked.connect(self.on_prompt_type_positive_clicked)
+        self.ui.pbPromptTypeNegative.clicked.connect(self.on_prompt_type_negative_clicked)
+        
+        # Connect Interaction Tools buttons
+        self.ui.pbInteractionPoint.clicked.connect(self.on_interaction_point_clicked)
+        
+        # Legacy connections for backward compatibility
+        self.ui.pbPositivePoint.clicked.connect(self.on_positive_point_clicked) if hasattr(self.ui, 'pbPositivePoint') else None
+        self.ui.pbNegativePoint.clicked.connect(self.on_negative_point_clicked) if hasattr(self.ui, 'pbNegativePoint') else None
     
     def install_dependencies(self):
         dependencies = {
@@ -576,6 +597,9 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
 
     def on_positive_point_clicked(self):
         """Start interactive placement of a positive point"""
+        # Set prompt type to positive first
+        self.on_prompt_type_positive_clicked()
+        
         if self.is_placing_positive or self.is_placing_negative:
             # Already in placement mode, cancel current placement
             self.stop_point_placement()
@@ -588,6 +612,9 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     
     def on_negative_point_clicked(self):
         """Start interactive placement of a negative point"""
+        # Set prompt type to negative first
+        self.on_prompt_type_negative_clicked()
+        
         if self.is_placing_positive or self.is_placing_negative:
             # Already in placement mode, cancel current placement
             self.stop_point_placement()
@@ -676,6 +703,10 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             
         print("Removed observers")
         
+        # Reset the interaction point button
+        self.ui.pbInteractionPoint.setChecked(False)
+        self.ui.pbInteractionPoint.setStyleSheet(self.unselected_style)
+        
         # Reset placement flags
         self.is_placing_positive = False
         self.is_placing_negative = False
@@ -756,6 +787,69 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         # Exit placement mode after placing a point
         self.stop_point_placement()
 
+    def on_prompt_type_positive_clicked(self):
+        """Set the current prompt type to positive"""
+        self.current_prompt_type_positive = True
+        self.ui.pbPromptTypePositive.setStyleSheet(self.selected_style)
+        self.ui.pbPromptTypeNegative.setStyleSheet(self.unselected_style)
+        self.ui.pbPromptTypePositive.setChecked(True)
+        self.ui.pbPromptTypeNegative.setChecked(False)
+        print("Prompt type set to POSITIVE")
+    
+    def on_prompt_type_negative_clicked(self):
+        """Set the current prompt type to negative"""
+        self.current_prompt_type_positive = False
+        self.ui.pbPromptTypePositive.setStyleSheet(self.unselected_style)
+        self.ui.pbPromptTypeNegative.setStyleSheet(self.selected_style)
+        self.ui.pbPromptTypePositive.setChecked(False)
+        self.ui.pbPromptTypeNegative.setChecked(True)
+        print("Prompt type set to NEGATIVE")
+        
+    def on_interaction_point_clicked(self):
+        """Start interactive placement of a point based on the current prompt type"""
+        if self.is_placing_positive or self.is_placing_negative:
+            # Already in placement mode, cancel current placement
+            self.stop_point_placement()
+            
+            # If we're canceling placement, also uncheck the button
+            self.ui.pbInteractionPoint.setChecked(False)
+            self.ui.pbInteractionPoint.setStyleSheet(self.unselected_style)
+            return
+            
+        # Toggle the button state
+        if self.ui.pbInteractionPoint.isChecked():
+            # Apply blue style
+            self.ui.pbInteractionPoint.setStyleSheet(self.selected_style)
+            
+            # Enter point placement mode based on current prompt type
+            if self.current_prompt_type_positive:
+                print("Starting positive point placement - click in the view to place")
+                self.is_placing_positive = True
+            else:
+                print("Starting negative point placement - click in the view to place")
+                self.is_placing_negative = True
+                
+            self.start_point_placement()
+        else:
+            # Reset style if unchecked
+            self.ui.pbInteractionPoint.setStyleSheet(self.unselected_style)
+            self.stop_point_placement()
+    
+    def reset_interaction_tools(self):
+        """Reset all interaction tool buttons to unchecked state"""
+        # List all interaction tools
+        interaction_buttons = [
+            self.ui.pbInteractionPoint,
+            self.ui.pbInteractionBBox,
+            self.ui.pbInteractionScribble,
+            self.ui.pbInteractionLasso
+        ]
+        
+        # Uncheck and reset style for all
+        for button in interaction_buttons:
+            button.setChecked(False)
+            button.setStyleSheet(self.unselected_style)
+
 
 class NNInteractiveSlicerQtEventFilter(qt.QObject):
     def __init__(self, nninteractive_slicer_widget, slice_widget):
@@ -770,18 +864,22 @@ class NNInteractiveSlicerQtEventFilter(qt.QObject):
                 if event.button() == qt.Qt.LeftButton:
                     # Get the RAS position for adding to the markup node
                     ras_position = self.get_ras_from_ijk(xyz)
-                    selected_segment_changed = self.add_point_to_markup(ras_position, is_positive=True)
+                    # Use the current prompt type setting
+                    is_positive = self.nninteractive_slicer_widget.current_prompt_type_positive
+                    selected_segment_changed = self.add_point_to_markup(ras_position, is_positive=is_positive)
                     
                     # Call the prompt method to handle server interaction
-                    self.nninteractive_slicer_widget.point_prompt(xyz=xyz, positive_click=True, override_selected_segment_changed=selected_segment_changed)
+                    self.nninteractive_slicer_widget.point_prompt(xyz=xyz, positive_click=is_positive, override_selected_segment_changed=selected_segment_changed)
                     return True
                 elif event.button() == qt.Qt.RightButton:
                     # Get the RAS position for adding to the markup node
                     ras_position = self.get_ras_from_ijk(xyz)
-                    selected_segment_changed = self.add_point_to_markup(ras_position, is_positive=False, override_selected_segment_changed=selected_segment_changed)
+                    # Use the opposite of the current prompt type setting for right-click
+                    is_positive = not self.nninteractive_slicer_widget.current_prompt_type_positive
+                    selected_segment_changed = self.add_point_to_markup(ras_position, is_positive=is_positive)
                     
                     # Call the prompt method to handle server interaction
-                    self.nninteractive_slicer_widget.point_prompt(xyz=xyz, positive_click=False)
+                    self.nninteractive_slicer_widget.point_prompt(xyz=xyz, positive_click=is_positive, override_selected_segment_changed=selected_segment_changed)
                     return True
         return False
 

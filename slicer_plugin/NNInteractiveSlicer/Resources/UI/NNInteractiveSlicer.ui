@@ -88,15 +88,15 @@
                                 </attribute>
                                 <layout class="QVBoxLayout" name="verticalLayout_11">
                                     <item>
-                                        <widget class="QGroupBox" name="pointPromptsGroup">
+                                        <widget class="QGroupBox" name="promptTypeGroup">
                                             <property name="title">
-                                                <string>Point Prompts</string>
+                                                <string>Prompt Type:</string>
                                             </property>
-                                            <layout class="QVBoxLayout" name="verticalLayout_12">
+                                            <layout class="QVBoxLayout" name="verticalLayout_14">
                                                 <item>
-                                                    <layout class="QHBoxLayout" name="horizontalLayout_points">
+                                                    <layout class="QHBoxLayout" name="horizontalLayout_prompt_type">
                                                         <item>
-                                                            <widget class="QPushButton" name="pbPositivePoint">
+                                                            <widget class="QPushButton" name="pbPromptTypePositive">
                                                                 <property name="minimumSize">
                                                                     <size>
                                                                         <width>0</width>
@@ -104,15 +104,21 @@
                                                                     </size>
                                                                 </property>
                                                                 <property name="toolTip">
-                                                                    <string>Add a positive point at current crosshair position (Ctrl+Left Click)</string>
+                                                                    <string>Set prompt type to positive</string>
                                                                 </property>
                                                                 <property name="text">
-                                                                    <string>Add Positive Point</string>
+                                                                    <string>Positive</string>
+                                                                </property>
+                                                                <property name="checkable">
+                                                                    <bool>true</bool>
+                                                                </property>
+                                                                <property name="checked">
+                                                                    <bool>true</bool>
                                                                 </property>
                                                             </widget>
                                                         </item>
                                                         <item>
-                                                            <widget class="QPushButton" name="pbNegativePoint">
+                                                            <widget class="QPushButton" name="pbPromptTypeNegative">
                                                                 <property name="minimumSize">
                                                                     <size>
                                                                         <width>0</width>
@@ -120,10 +126,13 @@
                                                                     </size>
                                                                 </property>
                                                                 <property name="toolTip">
-                                                                    <string>Add a negative point at current crosshair position (Ctrl+Right Click)</string>
+                                                                    <string>Set prompt type to negative</string>
                                                                 </property>
                                                                 <property name="text">
-                                                                    <string>Add Negative Point</string>
+                                                                    <string>Negative</string>
+                                                                </property>
+                                                                <property name="checkable">
+                                                                    <bool>true</bool>
                                                                 </property>
                                                             </widget>
                                                         </item>
@@ -132,7 +141,104 @@
                                             </layout>
                                         </widget>
                                     </item>
-                                    
+                                    <item>
+                                        <widget class="QGroupBox" name="pointPromptsGroup">
+                                            <property name="title">
+                                                <string>Interaction Tools:</string>
+                                            </property>
+                                            <layout class="QVBoxLayout" name="verticalLayout_12">
+                                                <item>
+                                                    <layout class="QVBoxLayout" name="verticalLayout_tools">
+                                                        <item>
+                                                            <widget class="QPushButton" name="pbInteractionPoint">
+                                                                <property name="minimumSize">
+                                                                    <size>
+                                                                        <width>0</width>
+                                                                        <height>30</height>
+                                                                    </size>
+                                                                </property>
+                                                                <property name="toolTip">
+                                                                    <string>Place a point prompt (Ctrl+Click)</string>
+                                                                </property>
+                                                                <property name="text">
+                                                                    <string>Point</string>
+                                                                </property>
+                                                                <property name="checkable">
+                                                                    <bool>true</bool>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                        <item>
+                                                            <widget class="QPushButton" name="pbInteractionBBox">
+                                                                <property name="minimumSize">
+                                                                    <size>
+                                                                        <width>0</width>
+                                                                        <height>30</height>
+                                                                    </size>
+                                                                </property>
+                                                                <property name="toolTip">
+                                                                    <string>Place a bounding box (not implemented)</string>
+                                                                </property>
+                                                                <property name="text">
+                                                                    <string>BBox</string>
+                                                                </property>
+                                                                <property name="enabled">
+                                                                    <bool>false</bool>
+                                                                </property>
+                                                                <property name="checkable">
+                                                                    <bool>true</bool>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                        <item>
+                                                            <widget class="QPushButton" name="pbInteractionScribble">
+                                                                <property name="minimumSize">
+                                                                    <size>
+                                                                        <width>0</width>
+                                                                        <height>30</height>
+                                                                    </size>
+                                                                </property>
+                                                                <property name="toolTip">
+                                                                    <string>Place a scribble prompt (not implemented)</string>
+                                                                </property>
+                                                                <property name="text">
+                                                                    <string>Scribble</string>
+                                                                </property>
+                                                                <property name="enabled">
+                                                                    <bool>false</bool>
+                                                                </property>
+                                                                <property name="checkable">
+                                                                    <bool>true</bool>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                        <item>
+                                                            <widget class="QPushButton" name="pbInteractionLasso">
+                                                                <property name="minimumSize">
+                                                                    <size>
+                                                                        <width>0</width>
+                                                                        <height>30</height>
+                                                                    </size>
+                                                                </property>
+                                                                <property name="toolTip">
+                                                                    <string>Place a lasso prompt (not implemented)</string>
+                                                                </property>
+                                                                <property name="text">
+                                                                    <string>Lasso</string>
+                                                                </property>
+                                                                <property name="enabled">
+                                                                    <bool>false</bool>
+                                                                </property>
+                                                                <property name="checkable">
+                                                                    <bool>true</bool>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                    </layout>
+                                                </item>
+                                            </layout>
+                                        </widget>
+                                    </item>
                                     <item>
                                         <widget class="QGroupBox" name="pointListGroup">
                                             <property name="title">
