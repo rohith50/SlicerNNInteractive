@@ -158,7 +158,7 @@
                                                                     </size>
                                                                 </property>
                                                                 <property name="toolTip">
-                                                                    <string>Place a point prompt (Ctrl+Click)</string>
+                                                                    <string>Place a point prompt (Press 'P' key to toggle)</string>
                                                                 </property>
                                                                 <property name="text">
                                                                     <string>Point</string>
