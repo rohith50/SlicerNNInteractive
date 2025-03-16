@@ -37,13 +37,12 @@ def ensure_synched(func):
                 print("Image changed (or not previously set). Calling sync_image_with_server()")
                 self.upload_image_to_server()
             
-            selected_segment_changed = self.selected_segment_changed()
-            if 'override_selected_segment_changed' in kwargs and kwargs['override_selected_segment_changed'] is not None:
-                selected_segment_changed = kwargs['override_selected_segment_changed']
-            
-            if selected_segment_changed:
+            if self.selected_segment_changed():
                 print("Segment changed (or not previously set). Calling sync_segment_with_server()")
+                self.clear_all_but_last_point()
                 self.upload_segment_to_server()
+            else:
+                print("Segment did not change!")
                 
         except Exception as e:
             print("Error in ensure_synched:", e)
@@ -109,7 +108,7 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.ui = slicer.util.childWidgetVariables(ui_widget)
         
         # Flag to control point list visibility
-        self.show_prompt_lists = False
+        self.show_prompt_lists = True
         self.ui.pointListGroup.setVisible(self.show_prompt_lists)
         
         self.add_segmentation_widget()
@@ -357,7 +356,7 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         print("Syncing segment with server...")
         try:
             t0 = time.time()
-            segment_data = self.get_segment_data()  # Expected to return (image_data, window, level)
+            segment_data = self.get_segment_data()
             print('self.segment_data() took', time.time() - t0)
             
             t0 = time.time()
@@ -391,7 +390,7 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             print("Error in upload_image_to_server:", e)
     
     @ensure_synched
-    def point_prompt(self, xyz=None, positive_click=False, override_selected_segment_changed=None):
+    def point_prompt(self, xyz=None, positive_click=False):
         url = f"{self.server}/add_point_interaction"
         
         seg_response = requests.post(
@@ -441,7 +440,7 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     def show_segmentation(self, segmentation_mask):
         t0 = time.time()
         
-        self.previous_states['segment_data'] = segmentation_mask
+        self.previous_states["segment_data"] = segmentation_mask
         
         segmentationNode, selectedSegmentID = self.get_selected_segmentation_node_and_segment_id()
         
@@ -506,8 +505,16 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     def selected_segment_changed(self):
         segment_data = self.get_segment_data()
         old_segment_data = self.previous_states.get("segment_data", None)
-        selected_segment_changed = old_segment_data is None or not np.all(old_segment_data.astype(bool) == segment_data)
-        self.previous_states["segment_data"] = copy.deepcopy(segment_data)
+        selected_segment_changed = old_segment_data is None or not np.all(old_segment_data.astype(bool) == segment_data.astype(bool))
+        
+        print('segment_data.sum():', segment_data.sum())
+        
+        if old_segment_data is not None:
+            print('old_segment_data.sum():', old_segment_data.sum())
+        else:
+            print('old_segment_data is None')
+
+        print('selected_segment_changed:', selected_segment_changed)
 
         return selected_segment_changed
 
@@ -593,13 +600,13 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             
         # Force scene update
         slicer.mrmlScene.Modified()
+
+    def clear_all_but_last_point(self):
+        # Clearing all but last point
+        pass
     
     def start_point_placement(self):
         """Enter point placement mode"""
-        selected_segment_changed = False
-        if self.selected_segment_changed():
-            selected_segment_changed = True
-            self.clear_points()
 
         markups_logic = slicer.modules.markups.logic()
         
@@ -622,9 +629,9 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
         # Add observer to the active node
         observer_id = active_node.AddObserver(slicer.vtkMRMLMarkupsNode.PointPositionDefinedEvent, 
-                                              lambda a, b: self.on_point_placed(a, b, override_selected_segment_changed=selected_segment_changed))
+                                              self.on_point_placed)
         print('added observer 623!')
-        print('active_node:', active_node)
+        
         self.point_placement_observers.append((active_node, observer_id))
         
         # Make sure the Point button is checked and blue
@@ -688,7 +695,7 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.is_placing_negative = False
         print("Placement mode stopped")
     
-    def on_point_placed(self, caller, event, override_selected_segment_changed=None):
+    def on_point_placed(self, caller, event):
         """Called when a point is placed in the scene"""
         # Add debug information to help diagnose issues
         print(f"on_point_placed called with event: {event}")
@@ -757,7 +764,7 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             print(f"Converted point to voxel coordinates: {xyz}")
             
             # Call point_prompt with the voxel coordinates
-            self.point_prompt(xyz=xyz, positive_click=is_positive, override_selected_segment_changed=override_selected_segment_changed)
+            self.point_prompt(xyz=xyz, positive_click=is_positive)
 
             # Instead of immediately starting a new placement, use a timer with short delay
             # to ensure the current placement mode is fully complete
