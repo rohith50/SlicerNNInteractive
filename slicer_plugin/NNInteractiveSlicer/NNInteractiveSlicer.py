@@ -205,6 +205,7 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     def setup_shortcuts(self):
         shortcuts = {
             "p": self.on_interaction_point_clicked,
+            "t": self.toggle_prompt_type,  # Add 'T' shortcut to toggle between positive/negative
         }
         self.shortcut_items = {}
         
@@ -785,6 +786,14 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             self.is_placing_negative = False
             self.start_point_placement()
     
+    def toggle_prompt_type(self):
+        """Toggle between positive and negative prompt types (triggered by 'T' key)"""
+        print("Toggling prompt type (positive ↔ negative)")
+        if self.current_prompt_type_positive:
+            self.on_prompt_type_negative_clicked()
+        else:
+            self.on_prompt_type_positive_clicked()
+    
     def on_prompt_type_negative_clicked(self):
         """Set the current prompt type to negative"""
         # Save the current placement state
@@ -897,6 +906,12 @@ class NNInteractiveSlicerQtEventFilterMainWindow(qt.QObject):
             if event.key() == qt.Qt.Key_P:
                 print("P key pressed - toggling point interaction")
                 self.nninteractive_slicer_widget.on_interaction_point_clicked()
+                return True
+            
+            # Check for the 'T' key (both capital and lowercase)
+            if event.key() == qt.Qt.Key_T:
+                print("T key pressed - toggling prompt type")
+                self.nninteractive_slicer_widget.toggle_prompt_type()
                 return True
             
             # We keep the meta key tracking for backward compatibility
