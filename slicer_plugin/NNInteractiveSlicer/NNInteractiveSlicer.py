@@ -20,6 +20,9 @@ import copy
 import importlib.util
 import time
 
+# Qt timer is used for delayed execution of point placement to avoid timing issues
+from qt import QTimer
+
 
 def ensure_synched(func):
     def inner(self, *args, **kwargs):
@@ -754,6 +757,11 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             
             # Call point_prompt with the voxel coordinates
             self.point_prompt(xyz=xyz, positive_click=is_positive, override_selected_segment_changed=override_selected_segment_changed)
+
+            # Instead of immediately starting a new placement, use a timer with short delay
+            # to ensure the current placement mode is fully complete
+            qt.QTimer.singleShot(100, self.start_point_placement)
+            print("Scheduled point placement restart with timer")
 
     def on_prompt_type_positive_clicked(self):
         """Set the current prompt type to positive"""
