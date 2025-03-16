@@ -506,8 +506,6 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
     def cleanup(self):
         """Clean up resources when the module is closed"""
-        self.removeObservers()
-
         if hasattr(self, "_qt_event_filters"):
             for slice_view, event_filter in self._qt_event_filters:
                 slice_view.removeEventFilter(event_filter)
@@ -565,6 +563,16 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
         # Clear the list widget
         self.ui.pointListWidget.clear()
+
+        # Empty the markup fiducial nodes in the 3D Slicer scene
+        if hasattr(self, 'positive_points_node') and self.positive_points_node:
+            self.positive_points_node.RemoveAllControlPoints()
+            
+        if hasattr(self, 'negative_points_node') and self.negative_points_node:
+            self.negative_points_node.RemoveAllControlPoints()
+            
+        # Force scene update
+        slicer.mrmlScene.Modified()
 
     def on_positive_point_clicked(self):
         """Start interactive placement of a positive point"""
@@ -762,15 +770,15 @@ class NNInteractiveSlicerQtEventFilter(qt.QObject):
                 if event.button() == qt.Qt.LeftButton:
                     # Get the RAS position for adding to the markup node
                     ras_position = self.get_ras_from_ijk(xyz)
-                    self.add_point_to_markup(ras_position, is_positive=True)
+                    selected_segment_changed = self.add_point_to_markup(ras_position, is_positive=True)
                     
                     # Call the prompt method to handle server interaction
-                    self.nninteractive_slicer_widget.point_prompt(xyz=xyz, positive_click=True)
+                    self.nninteractive_slicer_widget.point_prompt(xyz=xyz, positive_click=True, override_selected_segment_changed=selected_segment_changed)
                     return True
                 elif event.button() == qt.Qt.RightButton:
                     # Get the RAS position for adding to the markup node
                     ras_position = self.get_ras_from_ijk(xyz)
-                    self.add_point_to_markup(ras_position, is_positive=False)
+                    selected_segment_changed = self.add_point_to_markup(ras_position, is_positive=False, override_selected_segment_changed=selected_segment_changed)
                     
                     # Call the prompt method to handle server interaction
                     self.nninteractive_slicer_widget.point_prompt(xyz=xyz, positive_click=False)
@@ -797,6 +805,12 @@ class NNInteractiveSlicerQtEventFilter(qt.QObject):
     def add_point_to_markup(self, ras_position, is_positive=True):
         """Add a point to the appropriate markup fiducial node"""
         widget = self.nninteractive_slicer_widget
+
+        selected_segment_changed = widget.selected_segment_changed()
+        print('selected_segment_changed:', selected_segment_changed)
+        if selected_segment_changed:
+            print('widget.clear_points()!')
+            widget.clear_points()
         
         # Select the appropriate node
         if is_positive:
@@ -833,6 +847,8 @@ class NNInteractiveSlicerQtEventFilter(qt.QObject):
         slicer.mrmlScene.Modified()
         
         print(f"Added {label_type} point at: {ras_position}")
+
+        return selected_segment_changed
 
 
 class NNInteractiveSlicerQtEventFilterMainWindow(qt.QObject):
