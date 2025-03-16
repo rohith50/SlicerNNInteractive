@@ -760,12 +760,79 @@ class NNInteractiveSlicerQtEventFilter(qt.QObject):
             if self.nninteractive_slicer_widget._meta_pressed:
                 xyz = convert_device_to_image_pixel(self.slice_widget)
                 if event.button() == qt.Qt.LeftButton:
+                    # Get the RAS position for adding to the markup node
+                    ras_position = self.get_ras_from_ijk(xyz)
+                    self.add_point_to_markup(ras_position, is_positive=True)
+                    
+                    # Call the prompt method to handle server interaction
                     self.nninteractive_slicer_widget.point_prompt(xyz=xyz, positive_click=True)
                     return True
                 elif event.button() == qt.Qt.RightButton:
+                    # Get the RAS position for adding to the markup node
+                    ras_position = self.get_ras_from_ijk(xyz)
+                    self.add_point_to_markup(ras_position, is_positive=False)
+                    
+                    # Call the prompt method to handle server interaction
                     self.nninteractive_slicer_widget.point_prompt(xyz=xyz, positive_click=False)
                     return True
         return False
+
+    def get_ras_from_ijk(self, ijk_coords):
+        """Convert IJK (voxel) coordinates to RAS coordinates"""
+        volume_node = self.nninteractive_slicer_widget.get_volume_node()
+        if not volume_node:
+            return [0, 0, 0]
+            
+        # Convert IJK to RAS
+        ijkToRas = vtk.vtkMatrix4x4()
+        volume_node.GetIJKToRASMatrix(ijkToRas)
+        
+        # Apply the transformation
+        ijk_point = ijk_coords + [1.0]  # Add homogeneous coordinate
+        ras_point = [0, 0, 0, 1]
+        ijkToRas.MultiplyPoint(ijk_point, ras_point)
+        
+        return ras_point[0:3]
+        
+    def add_point_to_markup(self, ras_position, is_positive=True):
+        """Add a point to the appropriate markup fiducial node"""
+        widget = self.nninteractive_slicer_widget
+        
+        # Select the appropriate node
+        if is_positive:
+            active_node = widget.positive_points_node
+            point_id = len(widget.positive_points) + 1
+            label_prefix = "P"
+            label_type = "Positive"
+        else:
+            active_node = widget.negative_points_node
+            point_id = len(widget.negative_points) + 1
+            label_prefix = "N"
+            label_type = "Negative"
+        
+        # Add the point to the node
+        n = active_node.AddControlPoint(ras_position)
+        active_node.SetNthControlPointLabel(n, f"{label_prefix}-{point_id}")
+        active_node.SetNthControlPointLocked(n, True)
+        
+        # Store the point info
+        point_info = {'id': n, 'position': ras_position}
+        if is_positive:
+            widget.positive_points.append(point_info)
+        else:
+            widget.negative_points.append(point_info)
+        
+        # Add to list widget
+        widget.ui.pointListWidget.addItem(f"{label_prefix}-{point_id}: {label_type} at ({ras_position[0]:.1f}, {ras_position[1]:.1f}, {ras_position[2]:.1f})")
+        
+        # Make sure the point is visible
+        active_node.GetDisplayNode().SetVisibility(True)
+        active_node.SetDisplayVisibility(True)
+        
+        # Force scene update
+        slicer.mrmlScene.Modified()
+        
+        print(f"Added {label_type} point at: {ras_position}")
 
 
 class NNInteractiveSlicerQtEventFilterMainWindow(qt.QObject):
