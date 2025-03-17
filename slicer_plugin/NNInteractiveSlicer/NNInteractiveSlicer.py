@@ -81,13 +81,13 @@ def convert_device_to_image_pixel(sliceWidget):
 
 
 #
-# NNInteractiveSlicer
+# nnInteractiveSlicer
 #
 
-class NNInteractiveSlicer(ScriptedLoadableModule):
+class nnInteractiveSlicer(ScriptedLoadableModule):
     def __init__(self, parent):
         ScriptedLoadableModule.__init__(self, parent)
-        self.parent.title = _("NNInteractiveSlicer")
+        self.parent.title = _("nnInteractiveSlicer")
         self.parent.categories = [translate("qSlicerAbstractCoreModule", "Segmentation")]
         self.parent.dependencies = []  # List other modules if needed
         self.parent.contributors = ["Coen de Vente"]
@@ -97,13 +97,13 @@ class NNInteractiveSlicer(ScriptedLoadableModule):
         self.parent.acknowledgementText = ""
 
 
-class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
+class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     def setup(self):
         ScriptedLoadableModuleWidget.setup(self)
         
         self.install_dependencies()
         
-        ui_widget = slicer.util.loadUI(self.resourcePath("UI/NNInteractiveSlicer.ui"))
+        ui_widget = slicer.util.loadUI(self.resourcePath("UI/nnInteractiveSlicer.ui"))
         self.layout.addWidget(ui_widget)
         self.ui = slicer.util.childWidgetVariables(ui_widget)
         
@@ -270,10 +270,10 @@ class NNInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             if existing_action.objectName == "nninteractive_slicer_action":
                 return
 
-        action = qt.QAction(qt.QIcon(self.resourcePath("Icons/NNInteractiveSlicer.png")), "NNInteractiveSlicer", toolbar)
+        action = qt.QAction(qt.QIcon(self.resourcePath("Icons/nnInteractiveSlicer.png")), "nnInteractiveSlicer", toolbar)
         action.setObjectName("nninteractive_slicer_action")
-        action.setToolTip("Switch to NNInteractiveSlicer module")
-        action.triggered.connect(lambda: slicer.util.selectModule("NNInteractiveSlicer"))
+        action.setToolTip("Switch to nnInteractiveSlicer module")
+        action.triggered.connect(lambda: slicer.util.selectModule("nnInteractiveSlicer"))
         toolbar.addAction(action)
     
     def get_volume_node(self):

@@ -1,4 +1,4 @@
-set(MODULE_NAME "NNInteractiveSlicer")
+set(MODULE_NAME "nnInteractiveSlicer")
 
 #-----------------------------------------------------------------------------
 # Configure the module

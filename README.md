@@ -1,1 +1,1 @@
-# NNInteractiveSlicer plugin
+# nnInteractiveSlicer plugin
