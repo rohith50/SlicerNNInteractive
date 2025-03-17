@@ -20,13 +20,9 @@ import copy
 import importlib.util
 import time
 
-# Qt timer is used for delayed execution of point placement to avoid timing issues
-from qt import QTimer
-
 
 def ensure_synched(func):
     def inner(self, *args, **kwargs):
-        # def compute_checksum():
         try:                
             if getattr(self, "_sync_in_progress", False):
                 print("Sync already in progress; skipping checksum computation.")
@@ -50,34 +46,7 @@ def ensure_synched(func):
             self._sync_in_progress = False
             
             return func(self, *args, **kwargs)
-        # threading.Thread(target=compute_checksum, daemon=True).start()
     return inner
-
-def convert_device_to_image_pixel(sliceWidget):
-    sliceLogic = sliceWidget.sliceLogic()
-
-    # Get the RAS coordinates from the Crosshair node
-    crosshairNode = slicer.util.getNode("Crosshair")
-    point_Ras = [0, 0, 0]
-    crosshairNode.GetCursorPositionRAS(point_Ras)
-    
-    # Get the volume node from the slice logic
-    volumeNode = sliceLogic.GetBackgroundLayer().GetVolumeNode()
-
-    # If the volume node is transformed, apply that transform to get volume's RAS coordinates
-    transformRasToVolumeRas = vtk.vtkGeneralTransform()
-    slicer.vtkMRMLTransformNode.GetTransformBetweenNodes(None, volumeNode.GetParentTransformNode(), transformRasToVolumeRas)
-    point_VolumeRas = transformRasToVolumeRas.TransformPoint(point_Ras)
-
-    # Get voxel coordinates from physical coordinates
-    volumeRasToIjk = vtk.vtkMatrix4x4()
-    volumeNode.GetRASToIJKMatrix(volumeRasToIjk)
-    point_Ijk = [0, 0, 0, 1]
-    volumeRasToIjk.MultiplyPoint(list(point_VolumeRas) + [1.0], point_Ijk)
-    point_Ijk = [int(round(c)) for c in point_Ijk[0:3]]
-    
-    print("convert_device_to_image_pixel:", point_Ijk)
-    return point_Ijk
 
 
 #
@@ -108,7 +77,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.ui = slicer.util.childWidgetVariables(ui_widget)
         
         # Flag to control point list visibility
-        self.show_prompt_lists = False
+        self.show_prompt_lists = True
         self.ui.pointListGroup.setVisible(self.show_prompt_lists)
         
         self.add_segmentation_widget()
@@ -602,8 +571,94 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         slicer.mrmlScene.Modified()
 
     def clear_all_but_last_point(self):
-        # Clearing all but last point
-        pass
+        # 1. Get location of last point and whether it's positive or negative
+        last_positive = None
+        last_negative = None
+        
+        if self.positive_points:
+            last_positive = self.positive_points[-1]
+            
+        if self.negative_points:
+            last_negative = self.negative_points[-1]
+            
+        # Determine which is the most recent point
+        if last_positive and last_negative:
+            # Compare the IDs to determine which was added last
+            is_positive = last_positive['id'] > last_negative['id']
+            last_point = last_positive if is_positive else last_negative
+        elif last_positive:
+            is_positive = True
+            last_point = last_positive
+        elif last_negative:
+            is_positive = False
+            last_point = last_negative
+        else:
+            # No points to preserve
+            print('No points to preserve')
+            return
+            
+        # 2. Clear all points
+        self.clear_points()
+        
+        # 3. Add that last point back
+        print(f'Adding point {last_point}')
+        self.add_point_to_markup(last_point['position'], is_positive=is_positive)
+    
+    def get_ras_from_ijk(self, ijk_coords):
+        """Convert IJK (voxel) coordinates to RAS coordinates"""
+        volume_node = self.nninteractive_slicer_widget.get_volume_node()
+        if not volume_node:
+            return [0, 0, 0]
+            
+        # Convert IJK to RAS
+        ijkToRas = vtk.vtkMatrix4x4()
+        volume_node.GetIJKToRASMatrix(ijkToRas)
+        
+        # Apply the transformation
+        ijk_point = ijk_coords + [1.0]  # Add homogeneous coordinate
+        ras_point = [0, 0, 0, 1]
+        ijkToRas.MultiplyPoint(ijk_point, ras_point)
+        
+        return ras_point[0:3]
+        
+    def add_point_to_markup(self, ras_position, is_positive=True):
+        """Add a point to the appropriate markup fiducial node"""
+        
+        # Select the appropriate node
+        if is_positive:
+            active_node = self.positive_points_node
+            point_id = len(self.positive_points) + 1
+            label_prefix = "P"
+            label_type = "Positive"
+        else:
+            active_node = self.negative_points_node
+            point_id = len(self.negative_points) + 1
+            label_prefix = "N"
+            label_type = "Negative"
+        
+        # Add the point to the node
+        n = active_node.AddControlPoint(ras_position)
+        active_node.SetNthControlPointLabel(n, f"{label_prefix}-{point_id}")
+        active_node.SetNthControlPointLocked(n, True)
+        
+        # Store the point info
+        point_info = {'id': n, 'position': ras_position}
+        if is_positive:
+            self.positive_points.append(point_info)
+        else:
+            self.negative_points.append(point_info)
+        
+        # Add to list widget
+        self.ui.pointListWidget.addItem(f"{label_prefix}-{point_id}: {label_type} at ({ras_position[0]:.1f}, {ras_position[1]:.1f}, {ras_position[2]:.1f})")
+        
+        # Make sure the point is visible
+        active_node.GetDisplayNode().SetVisibility(True)
+        active_node.SetDisplayVisibility(True)
+        
+        # Force scene update
+        slicer.mrmlScene.Modified()
+        
+        print(f"Added {label_type} point at: {ras_position}")
     
     def start_point_placement(self):
         """Enter point placement mode"""
@@ -699,6 +754,10 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         """Called when a point is placed in the scene"""
         # Add debug information to help diagnose issues
         print(f"on_point_placed called with event: {event}")
+
+        if self._sync_in_progress:
+            print("_sync_in_progress is True, so skipping on_point_placed...")
+            return
         
         # Determine which node called this (positive or negative)
         active_node = caller
