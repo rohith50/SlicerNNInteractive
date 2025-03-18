@@ -114,9 +114,6 @@
                                                                 <property name="text">
                                                                     <string>P̱oint</string>
                                                                 </property>
-                                                                <property name="textFormat">
-                                                                    <enum>Qt::PlainText</enum>
-                                                                </property>
                                                                 <property name="checkable">
                                                                     <bool>true</bool>
                                                                 </property>
@@ -136,9 +133,6 @@
                                                                 <property name="text">
                                                                     <string>ḆBox</string>
                                                                 </property>
-                                                                <property name="textFormat">
-                                                                    <enum>Qt::PlainText</enum>
-                                                                </property>
                                                                 <property name="checkable">
                                                                     <bool>true</bool>
                                                                 </property>
@@ -157,9 +151,6 @@
                                                                 </property>
                                                                 <property name="text">
                                                                     <string>S̱cribble</string>
-                                                                </property>
-                                                                <property name="textFormat">
-                                                                    <enum>Qt::PlainText</enum>
                                                                 </property>
                                                                 <property name="enabled">
                                                                     <bool>false</bool>
@@ -182,9 +173,6 @@
                                                                 </property>
                                                                 <property name="text">
                                                                     <string>Ḻasso</string>
-                                                                </property>
-                                                                <property name="textFormat">
-                                                                    <enum>Qt::PlainText</enum>
                                                                 </property>
                                                                 <property name="enabled">
                                                                     <bool>false</bool>
