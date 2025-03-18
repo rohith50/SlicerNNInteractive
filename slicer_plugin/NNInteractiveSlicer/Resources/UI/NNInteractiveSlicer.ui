@@ -33,55 +33,6 @@
                             <property name="currentIndex">
                                 <number>0</number>
                             </property>
-                            <widget class="QWidget" name="tabConfig">
-                                <attribute name="title">
-                                    <string>Configuration</string>
-                                </attribute>
-                                <layout class="QVBoxLayout" name="verticalLayout_10">
-                                    <item>
-                                        <widget class="QGroupBox" name="serverGroup">
-                                            <property name="title">
-                                                <string>Server Settings</string>
-                                            </property>
-                                            <layout class="QVBoxLayout" name="verticalLayout_5">
-                                                <item>
-                                                    <layout class="QHBoxLayout" name="horizontalLayout_server">
-                                                        <item>
-                                                            <widget class="QLabel" name="label">
-                                                                <property name="text">
-                                                                    <string>Server URL:</string>
-                                                                </property>
-                                                            </widget>
-                                                        </item>
-                                                        <item>
-                                                            <widget class="QLineEdit" name="Server">
-                                                                <property name="text">
-                                                                    <string>http://sunflare:1527</string>
-                                                                </property>
-                                                            </widget>
-                                                        </item>
-                                                    </layout>
-                                                </item>
-                                            </layout>
-                                        </widget>
-                                    </item>
-                                    
-                                    <item>
-                                        <spacer name="verticalSpacer">
-                                            <property name="orientation">
-                                                <enum>Qt::Vertical</enum>
-                                            </property>
-                                            <property name="sizeHint" stdset="0">
-                                                <size>
-                                                    <width>20</width>
-                                                    <height>40</height>
-                                                </size>
-                                            </property>
-                                        </spacer>
-                                    </item>
-                                </layout>
-                            </widget>
-                            
                             <widget class="QWidget" name="tabPrompts">
                                 <attribute name="title">
                                     <string>nnInteractive Prompts</string>
@@ -90,7 +41,7 @@
                                     <item>
                                         <widget class="QGroupBox" name="promptTypeGroup">
                                             <property name="title">
-                                                <string>Prompt Type:</string>
+                                                <string>Prompt Ṯype:</string>
                                             </property>
                                             <layout class="QVBoxLayout" name="verticalLayout_14">
                                                 <item>
@@ -161,7 +112,10 @@
                                                                     <string>Place a point prompt (Press 'P' key to toggle)</string>
                                                                 </property>
                                                                 <property name="text">
-                                                                    <string>Point</string>
+                                                                    <string>P̱oint</string>
+                                                                </property>
+                                                                <property name="textFormat">
+                                                                    <enum>Qt::PlainText</enum>
                                                                 </property>
                                                                 <property name="checkable">
                                                                     <bool>true</bool>
@@ -169,7 +123,7 @@
                                                             </widget>
                                                         </item>
                                                         <item>
-                                                            <widget class="QPushButton" name="pbInteractionBBox">
+                                                            <widget class="QPushButton" name="pbInteractionBbox">
                                                                 <property name="minimumSize">
                                                                     <size>
                                                                         <width>0</width>
@@ -180,10 +134,10 @@
                                                                     <string>Place a bounding box (not implemented)</string>
                                                                 </property>
                                                                 <property name="text">
-                                                                    <string>BBox</string>
+                                                                    <string>ḆBox</string>
                                                                 </property>
-                                                                <property name="enabled">
-                                                                    <bool>false</bool>
+                                                                <property name="textFormat">
+                                                                    <enum>Qt::PlainText</enum>
                                                                 </property>
                                                                 <property name="checkable">
                                                                     <bool>true</bool>
@@ -202,7 +156,10 @@
                                                                     <string>Place a scribble prompt (not implemented)</string>
                                                                 </property>
                                                                 <property name="text">
-                                                                    <string>Scribble</string>
+                                                                    <string>S̱cribble</string>
+                                                                </property>
+                                                                <property name="textFormat">
+                                                                    <enum>Qt::PlainText</enum>
                                                                 </property>
                                                                 <property name="enabled">
                                                                     <bool>false</bool>
@@ -224,7 +181,10 @@
                                                                     <string>Place a lasso prompt (not implemented)</string>
                                                                 </property>
                                                                 <property name="text">
-                                                                    <string>Lasso</string>
+                                                                    <string>Ḻasso</string>
+                                                                </property>
+                                                                <property name="textFormat">
+                                                                    <enum>Qt::PlainText</enum>
                                                                 </property>
                                                                 <property name="enabled">
                                                                     <bool>false</bool>
@@ -260,6 +220,55 @@
                                                 </item>
                                             </layout>
                                         </widget>
+                                    </item>
+                                </layout>
+                            </widget>
+                            
+                            <widget class="QWidget" name="tabConfig">
+                                <attribute name="title">
+                                    <string>Configuration</string>
+                                </attribute>
+                                <layout class="QVBoxLayout" name="verticalLayout_10">
+                                    <item>
+                                        <widget class="QGroupBox" name="serverGroup">
+                                            <property name="title">
+                                                <string>Server Settings</string>
+                                            </property>
+                                            <layout class="QVBoxLayout" name="verticalLayout_5">
+                                                <item>
+                                                    <layout class="QHBoxLayout" name="horizontalLayout_server">
+                                                        <item>
+                                                            <widget class="QLabel" name="label">
+                                                                <property name="text">
+                                                                    <string>Server URL:</string>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                        <item>
+                                                            <widget class="QLineEdit" name="Server">
+                                                                <property name="text">
+                                                                    <string>http://sunflare:1527</string>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                    </layout>
+                                                </item>
+                                            </layout>
+                                        </widget>
+                                    </item>
+                                    
+                                    <item>
+                                        <spacer name="verticalSpacer">
+                                            <property name="orientation">
+                                                <enum>Qt::Vertical</enum>
+                                            </property>
+                                            <property name="sizeHint" stdset="0">
+                                                <size>
+                                                    <width>20</width>
+                                                    <height>40</height>
+                                                </size>
+                                            </property>
+                                        </spacer>
                                     </item>
                                 </layout>
                             </widget>
