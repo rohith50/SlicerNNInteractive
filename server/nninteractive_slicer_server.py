@@ -198,7 +198,7 @@ async def add_point_interaction(params: InferenceParams):
     xyz = params.voxel_coord
     print('xyz:', xyz)
     
-    seg_result = PROMPT_MANAGER.add_point_interaction(xyz)
+    # seg_result = PROMPT_MANAGER.add_point_interaction(xyz)
     seg_result = PROMPT_MANAGER.add_point_interaction(xyz, include_interaction=positive_click)
     
     segmentation_binary_data = segmentation_binary(seg_result, compress=True)
