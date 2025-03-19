@@ -120,7 +120,11 @@
                                                             </widget>
                                                         </item>
                                                         <item>
-                                                            <widget class="QPushButton" name="pbInteractionBbox">
+                                                            <!-- <widget class="QPushButton" name="pbInteractionBbox"> -->
+                                                            <widget class="qSlicerMarkupsPlaceWidget" name="sam2PlaceWidget">
+                                                                <property name="placeMultipleMarkups">
+                                                                    <enum>qSlicerMarkupsPlaceWidget::ForcePlaceSingleMarkup</enum>
+                                                                </property>
                                                                 <property name="minimumSize">
                                                                     <size>
                                                                         <width>0</width>
@@ -132,6 +136,9 @@
                                                                 </property>
                                                                 <property name="text">
                                                                     <string>ḆBox</string>
+                                                                </property>
+                                                                <property name="enabled">
+                                                                    <bool>false</bool>
                                                                 </property>
                                                                 <property name="checkable">
                                                                     <bool>true</bool>
@@ -182,6 +189,20 @@
                                                                 </property>
                                                             </widget>
                                                         </item>
+
+<item>
+           <!-- <widget class="qSlicerMarkupsPlaceWidget" name="sam2PlaceWidget"> -->
+            <!-- <property name="placeMultipleMarkups"> -->
+             <!-- <enum>qSlicerMarkupsPlaceWidget::ForcePlaceSingleMarkup</enum> -->
+            <!-- </property> -->
+          <!-- <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property> -->
+         <!-- </widget> -->
+         </item>
                                                     </layout>
                                                 </item>
                                             </layout>

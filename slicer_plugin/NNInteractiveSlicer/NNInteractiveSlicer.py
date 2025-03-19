@@ -77,7 +77,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.ui = slicer.util.childWidgetVariables(ui_widget)
         
         # Flag to control point list visibility
-        self.show_prompt_lists = True
+        self.show_prompt_lists = False
         self.ui.pointListGroup.setVisible(self.show_prompt_lists)
         
         self.add_segmentation_widget()
@@ -113,6 +113,94 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
 
         # Connect Interaction Tools buttons
         self.ui.pbInteractionPoint.clicked.connect(self.on_interaction_point_clicked)
+
+        sam2ROINode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsROINode")
+        # sam2ROINode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsPlaneNode")
+        sam2ROINode.SetName("SAM2 ROI")
+        sam2ROINode.CreateDefaultDisplayNodes()
+        sam2ROINode.GetDisplayNode().SetFillOpacity(0.4)
+        sam2ROINode.GetDisplayNode().SetSelectedColor(0, 1, 0)
+        sam2ROINode.GetDisplayNode().SetColor(0, 1, 0)
+        sam2ROINode.GetDisplayNode().SetActiveColor(0, 1, 0)
+        self._sam2ROINode = sam2ROINode
+
+        self.ui.sam2PlaceWidget.setMRMLScene(slicer.mrmlScene)
+        self.ui.sam2PlaceWidget.placeButton().toolTip = _("BBox Prompt")
+        self.ui.sam2PlaceWidget.buttonsVisible = False
+        self.ui.sam2PlaceWidget.placeButton().show()
+        self.ui.sam2PlaceWidget.deleteButton().hide()
+        self.ui.sam2PlaceWidget.setCurrentNode(self._sam2ROINode)
+
+        placeButton = self.ui.sam2PlaceWidget.placeButton()
+        placeButton.setText("ḆBox")
+        placeButton.setToolButtonStyle(qt.Qt.ToolButtonTextOnly)
+        # Optionally, remove any existing icon:
+        placeButton.setIcon(qt.QIcon())
+        placeButton.setStyleSheet("min-height: 22px; font-size: 13pt;")
+        self.ui.sam2PlaceWidget.deleteButton().hide()
+
+        placeButton = self.ui.sam2PlaceWidget.placeButton()
+
+        # 1) Make the button checkable (so it can appear “pressed”/selected)
+        placeButton.setCheckable(True)
+
+        # 2) Define a style sheet for the checked state
+        placeButton.setStyleSheet("""
+            QToolButton {
+                /* normal state: no special styling */
+                min-height: 22px;
+                font-size: 13pt;
+            }
+            QToolButton:checked {
+                background-color: #3498db;  /* blue */
+                color: white;
+            }
+        """)
+
+        self.prev_caller = None
+        self._sam2ROINode.AddObserver(
+            slicer.vtkMRMLMarkupsNode.PointPositionDefinedEvent,
+            self.onROIPlaced
+        )
+     
+    def onROIPlaced(self, caller, event):
+        # This method will be called every time a point is defined or moved
+        # For example, if you only want to print once the user has placed at least 2 corners:
+        # print(event)
+        placeButton = self.ui.sam2PlaceWidget.placeButton()
+
+        if self.prev_caller is not None and caller.GetID() == self.prev_caller.GetID():
+            print("placed!")
+            # Reset the button state so it appears enabled
+            placeButton.setChecked(False)
+            placeButton.setEnabled(True)
+            
+            # Create a new ROI node for further placement.
+            newROINode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsROINode")
+            newROINode.SetName("SAM2 ROI")
+            newROINode.CreateDefaultDisplayNodes()
+            newROINode.GetDisplayNode().SetFillOpacity(0.4)
+            newROINode.GetDisplayNode().SetSelectedColor(0, 1, 0)
+            newROINode.GetDisplayNode().SetColor(0, 1, 0)
+            newROINode.GetDisplayNode().SetActiveColor(0, 1, 0)
+            
+            # Set the new ROI node on the place widget.
+            self._sam2ROINode = newROINode
+            self.ui.sam2PlaceWidget.setCurrentNode(newROINode)
+            
+            self._sam2ROINode.AddObserver(
+                slicer.vtkMRMLMarkupsNode.PointPositionDefinedEvent,
+                self.onROIPlaced
+            )
+            qt.QTimer.singleShot(100, lambda: placeButton.click())
+            
+            self.prev_caller = None
+        else:
+            print('nope')
+
+        # self.ui.sam2PlaceWidget.placeButton().setChecked(True)
+
+        self.prev_caller = caller
     
     def install_dependencies(self):
         dependencies = {

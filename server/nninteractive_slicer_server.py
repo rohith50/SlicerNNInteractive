@@ -207,9 +207,6 @@ async def add_point_interaction(params: InferenceParams):
     # Return as binary data with appropriate content type
     return Response(content=segmentation_binary_data, media_type="application/octet-stream", headers={"Content-Encoding": "gzip"})
 
-
-
-
     
 def unpack_binary_segmentation(binary_data, vol_shape):
     """
