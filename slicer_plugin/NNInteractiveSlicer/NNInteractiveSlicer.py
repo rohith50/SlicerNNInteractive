@@ -285,7 +285,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     def setup_shortcuts(self):
         shortcuts = {
             "o": self.on_interaction_point_clicked,
-            # "o": lambda: print('123'),
             "t": self.toggle_prompt_type,  # Add 'T' shortcut to toggle between positive/negative
         }
         self.shortcut_items = {}
