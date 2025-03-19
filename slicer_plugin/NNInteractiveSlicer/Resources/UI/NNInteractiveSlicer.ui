@@ -205,7 +205,7 @@
                                     </item>
 
                                     <item>
-                                        <widget class="QGroupBox" name="progressGroup">
+                                        <widget class="QGroupBox" name="uploadProgressGroup">
                                             <property name="title">
                                                 <string>Upload progress:</string>
                                             </property>

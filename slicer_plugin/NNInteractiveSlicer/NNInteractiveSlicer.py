@@ -49,6 +49,19 @@ def ensure_synched(func):
     return inner
 
 
+def ensure_slicer_setup(func):
+    def inner(self, *args, **kwargs):
+        if slicer.mrmlScene.GetNodesByName("PromptPointsPositive").GetNumberOfItems() == 0:
+            # self.setup()
+            self.previous_states = {}
+            self.setup_markups_points()
+            self.setup_shortcuts()
+
+        
+        return func(self, *args, **kwargs)
+    return inner
+
+
 #
 # nnInteractiveSlicer
 #
@@ -101,6 +114,8 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         print("Server URL updated and saved:", self.server)
     
     def init_ui_functionality(self):
+        self.ui.uploadProgressGroup.setVisible(False)
+
         # Load the saved server URL (default to an empty string if not set)
         savedServer = slicer.util.settingsValue("nnInteractiveSlicer/server", "")
         self.ui.Server.text = savedServer
@@ -409,10 +424,33 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
 
             from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 
+            # self.ui.uploadProgressGroup.setVisible(True)
+
+            slicer.progress_window = slicer.util.createProgressDialog(autoClose=False)
+            slicer.progress_window.minimum = 0
+            slicer.progress_window.maximum = 100
+            slicer.progress_window.setLabelText("Uploading image...")
+            # slicer.app.processEvents()
+
+            # self.ui.uploadProgressBar.update()
+            # self.ui.uploadProgressBar.setValue(0)
+            # self.ui.uploadProgressBar.update()
+
             def my_callback(monitor):
-                print('my_callback!!!!')
-                print(monitor.bytes_read / len(compressed_data) * 100)
-                self.ui.uploadProgressBar.setValue(monitor.bytes_read / len(compressed_data) * 100)
+                if not hasattr(monitor, 'last_update'):
+                    monitor.last_update = time.time()
+
+                if time.time() - monitor.last_update <= .2:
+                    print('time.time() - last_update:', time.time() - monitor.last_update)
+                    return
+                monitor.last_update = time.time()
+
+                slicer.progress_window.setValue(monitor.bytes_read / len(compressed_data) * 100)
+                slicer.progress_window.show()
+                slicer.progress_window.activateWindow()
+                slicer.progress_window.setLabelText("Uploading image...")
+                # Process events to allow screen to refresh
+                slicer.app.processEvents()
 
             e = MultipartEncoder(
                 fields=files
@@ -421,7 +459,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             
             response = requests.post(
                 url,
-                # files=files,
                 data=m,
                 headers={"Content-Encoding": "gzip", 'Content-Type': m.content_type}
             )
@@ -431,6 +468,9 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                 print("Image successfully uploaded to server.")
             else:
                 print("Image upload failed with status code:", response.status_code)
+
+            # self.ui.uploadProgressGroup.setVisible(False)
+            slicer.progress_window.close()
         except Exception as e:
             print("Error in upload_image_to_server:", e)
 
@@ -920,7 +960,8 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             qt.QTimer.singleShot(100, self.start_point_placement)
             print("Scheduled point placement restart with timer")
 
-    def on_prompt_type_positive_clicked(self):
+    @ensure_slicer_setup
+    def on_prompt_type_positive_clicked(self, checked=False):
         """Set the current prompt type to positive"""
         # Save the current placement state
         was_placing = self.is_placing_positive or self.is_placing_negative
@@ -942,7 +983,8 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             self.is_placing_negative = False
             self.start_point_placement()
     
-    def toggle_prompt_type(self):
+    @ensure_slicer_setup
+    def toggle_prompt_type(self, checked=False):
         """Toggle between positive and negative prompt types (triggered by 'T' key)"""
         print("Toggling prompt type (positive ↔ negative)")
         if self.current_prompt_type_positive:
@@ -950,7 +992,8 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         else:
             self.on_prompt_type_positive_clicked()
     
-    def on_prompt_type_negative_clicked(self):
+    @ensure_slicer_setup
+    def on_prompt_type_negative_clicked(self, checked=False):
         """Set the current prompt type to negative"""
         # Save the current placement state
         was_placing = self.is_placing_positive or self.is_placing_negative
@@ -971,8 +1014,9 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             self.is_placing_positive = False
             self.is_placing_negative = True
             self.start_point_placement()
-        
-    def on_interaction_point_clicked(self):
+
+    @ensure_slicer_setup
+    def on_interaction_point_clicked(self, checked=False):
         """Start interactive placement of a point based on the current prompt type"""
         print("Calling on_interaction_point_clicked")
         if self.interaction_tool_mode != 'point':
