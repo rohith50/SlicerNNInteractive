@@ -67,6 +67,7 @@ def ensure_slicer_setup(func):
 class nnInteractiveSlicer(ScriptedLoadableModule):
     def __init__(self, parent):
         ScriptedLoadableModule.__init__(self, parent)
+        
         self.parent.title = _("nnInteractiveSlicer")
         self.parent.categories = [translate("qSlicerAbstractCoreModule", "Segmentation")]
         self.parent.dependencies = []  # List other modules if needed
@@ -156,7 +157,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.ui.bboxPlaceWidget.setCurrentNode(self._bbox2ROINode)
 
         placeButton = self.ui.bboxPlaceWidget.placeButton()
-        placeButton.setText("ḆBox")
+        placeButton.setText("BBox")
         placeButton.setToolButtonStyle(qt.Qt.ToolButtonTextOnly)
         # Optionally, remove any existing icon:
         placeButton.setIcon(qt.QIcon())
@@ -165,7 +166,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
 
         placeButton = self.ui.bboxPlaceWidget.placeButton()
 
-        # 1) Make the button checkable (so it can appear “pressed”/selected)
+        # 1) Make the button checkable (so it can appear "pressed"/selected)
         placeButton.setCheckable(True)
 
         # 2) Define a style sheet for the checked state
@@ -984,7 +985,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     @ensure_slicer_setup
     def toggle_prompt_type(self, checked=False):
         """Toggle between positive and negative prompt types (triggered by 'T' key)"""
-        print("Toggling prompt type (positive ↔ negative)")
+        print("Toggling prompt type (positive <> negative)")
         if self.current_prompt_type_positive:
             self.on_prompt_type_negative_clicked()
         else:
