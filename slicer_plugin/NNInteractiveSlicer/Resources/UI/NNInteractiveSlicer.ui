@@ -256,7 +256,7 @@
                                                         <item>
                                                             <widget class="QLineEdit" name="Server">
                                                                 <property name="text">
-                                                                    <string>http://sunflare:1527</string>
+                                                                    <string>http://localhost:1527</string>
                                                                 </property>
                                                             </widget>
                                                         </item>

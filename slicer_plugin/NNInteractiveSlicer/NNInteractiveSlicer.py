@@ -84,7 +84,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.add_module_icon_to_toolbar()
         self.setup_shortcuts()
         self.setup_markups_points()
-        self.update_server()
         self.init_ui_functionality()
         
         _ = self.get_current_segment_id()
@@ -92,9 +91,21 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self._sync_in_progress = False
     
     def update_server(self):
+        # Get the updated server URL from the UI
         self.server = self.ui.Server.text
+        
+        # Save the server URL to QSettings
+        settings = qt.QSettings()
+        settings.setValue("nnInteractiveSlicer/server", self.server)
+        
+        print("Server URL updated and saved:", self.server)
     
     def init_ui_functionality(self):
+        # Load the saved server URL (default to an empty string if not set)
+        savedServer = slicer.util.settingsValue("nnInteractiveSlicer/server", "")
+        self.ui.Server.text = savedServer
+        self.server = savedServer
+
         self.ui.Server.editingFinished.connect(self.update_server)
         
         # Set up style sheets for selected/unselected buttons
