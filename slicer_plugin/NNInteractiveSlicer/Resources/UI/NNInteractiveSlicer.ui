@@ -112,7 +112,7 @@
                                                                     <string>Place a point prompt (Press 'P' key to toggle)</string>
                                                                 </property>
                                                                 <property name="text">
-                                                                    <string>P̱oint</string>
+                                                                    <string>Po̱int</string>
                                                                 </property>
                                                                 <property name="checkable">
                                                                     <bool>true</bool>
@@ -143,6 +143,9 @@
                                                                 <property name="checkable">
                                                                     <bool>true</bool>
                                                                 </property>
+                                                                <property name="visible">
+                                                                    <bool>false</bool>
+                                                                </property>
                                                             </widget>
                                                         </item>
                                                         <item>
@@ -165,6 +168,9 @@
                                                                 <property name="checkable">
                                                                     <bool>true</bool>
                                                                 </property>
+                                                                <property name="visible">
+                                                                    <bool>false</bool>
+                                                                </property>
                                                             </widget>
                                                         </item>
                                                         <item>
@@ -186,6 +192,9 @@
                                                                 </property>
                                                                 <property name="checkable">
                                                                     <bool>true</bool>
+                                                                </property>
+                                                                <property name="visible">
+                                                                    <bool>false</bool>
                                                                 </property>
                                                             </widget>
                                                         </item>

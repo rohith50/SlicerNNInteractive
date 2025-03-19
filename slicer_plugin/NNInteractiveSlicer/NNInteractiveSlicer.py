@@ -271,12 +271,13 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
     def setup_shortcuts(self):
         shortcuts = {
-            "p": self.on_interaction_point_clicked,
+            "o": self.on_interaction_point_clicked,
             "t": self.toggle_prompt_type,  # Add 'T' shortcut to toggle between positive/negative
         }
         self.shortcut_items = {}
         
         for shortcut_key, shortcut_event in shortcuts.items():
+            print(f'Added shortcut for {shortcut_key}: {shortcut_event}')
             shortcut = qt.QShortcut(qt.QKeySequence(shortcut_key), slicer.util.mainWindow())
             shortcut.activated.connect(shortcut_event)
             self.shortcut_items[shortcut_key] = shortcut
@@ -983,6 +984,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
     def on_interaction_point_clicked(self):
         """Start interactive placement of a point based on the current prompt type"""
+        print("Calling on_interaction_point_clicked")
         if self.interaction_tool_mode != 'point':
             self.interaction_tool_mode = 'point'
 
