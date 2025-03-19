@@ -121,7 +121,7 @@
                                                         </item>
                                                         <item>
                                                             <!-- <widget class="QPushButton" name="pbInteractionBbox"> -->
-                                                            <widget class="qSlicerMarkupsPlaceWidget" name="sam2PlaceWidget">
+                                                            <widget class="qSlicerMarkupsPlaceWidget" name="bboxPlaceWidget">
                                                                 <property name="placeMultipleMarkups">
                                                                     <enum>qSlicerMarkupsPlaceWidget::ForcePlaceSingleMarkup</enum>
                                                                 </property>
@@ -198,25 +198,36 @@
                                                                 </property>
                                                             </widget>
                                                         </item>
-
-<item>
-           <!-- <widget class="qSlicerMarkupsPlaceWidget" name="sam2PlaceWidget"> -->
-            <!-- <property name="placeMultipleMarkups"> -->
-             <!-- <enum>qSlicerMarkupsPlaceWidget::ForcePlaceSingleMarkup</enum> -->
-            <!-- </property> -->
-          <!-- <property name="sizePolicy">
-              <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property> -->
-         <!-- </widget> -->
-         </item>
                                                     </layout>
                                                 </item>
                                             </layout>
                                         </widget>
                                     </item>
+
+                                    <item>
+                                        <widget class="QGroupBox" name="progressGroup">
+                                            <property name="title">
+                                                <string>Upload progress:</string>
+                                            </property>
+                                            <layout class="QVBoxLayout" name="verticalLayout_12b">
+                                                <item>
+                                                    <layout class="QVBoxLayout" name="verticalLayout_tools">
+                                                        <item>
+                                                            <widget class="QProgressBar" name="uploadProgressBar">
+                                                                <property name="value">
+                                                                    <number>0</number>
+                                                                </property>
+                                                                <property name="visible">
+                                                                    <bool>true</bool>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                    </layout>
+                                                </item>
+                                            </layout>
+                                        </widget>
+                                    </item>
+
                                     <item>
                                         <widget class="QGroupBox" name="pointListGroup">
                                             <property name="title">

@@ -61,7 +61,7 @@ class nnInteractiveSlicer(ScriptedLoadableModule):
         self.parent.dependencies = []  # List other modules if needed
         self.parent.contributors = ["Coen de Vente"]
         self.parent.helpText = """
-            This is an intuitive 3D Slicer plugin for efficient SAM2-based segmentation.
+            This is an 3D Slicer plugin for using nnInteractive.
             """
         self.parent.acknowledgementText = ""
 
@@ -125,32 +125,32 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         # Connect Interaction Tools buttons
         self.ui.pbInteractionPoint.clicked.connect(self.on_interaction_point_clicked)
 
-        sam2ROINode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsROINode")
-        # sam2ROINode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsPlaneNode")
-        sam2ROINode.SetName("SAM2 ROI")
-        sam2ROINode.CreateDefaultDisplayNodes()
-        sam2ROINode.GetDisplayNode().SetFillOpacity(0.4)
-        sam2ROINode.GetDisplayNode().SetSelectedColor(0, 1, 0)
-        sam2ROINode.GetDisplayNode().SetColor(0, 1, 0)
-        sam2ROINode.GetDisplayNode().SetActiveColor(0, 1, 0)
-        self._sam2ROINode = sam2ROINode
+        bbox2ROINode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsROINode")
+        # bbox2ROINode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsPlaneNode")
+        bbox2ROINode.SetName("BBox ROI")
+        bbox2ROINode.CreateDefaultDisplayNodes()
+        bbox2ROINode.GetDisplayNode().SetFillOpacity(0.4)
+        bbox2ROINode.GetDisplayNode().SetSelectedColor(0, 1, 0)
+        bbox2ROINode.GetDisplayNode().SetColor(0, 1, 0)
+        bbox2ROINode.GetDisplayNode().SetActiveColor(0, 1, 0)
+        self._bbox2ROINode = bbox2ROINode
 
-        self.ui.sam2PlaceWidget.setMRMLScene(slicer.mrmlScene)
-        self.ui.sam2PlaceWidget.placeButton().toolTip = _("BBox Prompt")
-        self.ui.sam2PlaceWidget.buttonsVisible = False
-        self.ui.sam2PlaceWidget.placeButton().show()
-        self.ui.sam2PlaceWidget.deleteButton().hide()
-        self.ui.sam2PlaceWidget.setCurrentNode(self._sam2ROINode)
+        self.ui.bboxPlaceWidget.setMRMLScene(slicer.mrmlScene)
+        self.ui.bboxPlaceWidget.placeButton().toolTip = _("BBox Prompt")
+        self.ui.bboxPlaceWidget.buttonsVisible = False
+        self.ui.bboxPlaceWidget.placeButton().show()
+        self.ui.bboxPlaceWidget.deleteButton().hide()
+        self.ui.bboxPlaceWidget.setCurrentNode(self._bbox2ROINode)
 
-        placeButton = self.ui.sam2PlaceWidget.placeButton()
+        placeButton = self.ui.bboxPlaceWidget.placeButton()
         placeButton.setText("ḆBox")
         placeButton.setToolButtonStyle(qt.Qt.ToolButtonTextOnly)
         # Optionally, remove any existing icon:
         placeButton.setIcon(qt.QIcon())
         placeButton.setStyleSheet("min-height: 22px; font-size: 13pt;")
-        self.ui.sam2PlaceWidget.deleteButton().hide()
+        self.ui.bboxPlaceWidget.deleteButton().hide()
 
-        placeButton = self.ui.sam2PlaceWidget.placeButton()
+        placeButton = self.ui.bboxPlaceWidget.placeButton()
 
         # 1) Make the button checkable (so it can appear “pressed”/selected)
         placeButton.setCheckable(True)
@@ -169,7 +169,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         """)
 
         self.prev_caller = None
-        self._sam2ROINode.AddObserver(
+        self._bbox2ROINode.AddObserver(
             slicer.vtkMRMLMarkupsNode.PointPositionDefinedEvent,
             self.onROIPlaced
         )
@@ -178,7 +178,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         # This method will be called every time a point is defined or moved
         # For example, if you only want to print once the user has placed at least 2 corners:
         # print(event)
-        placeButton = self.ui.sam2PlaceWidget.placeButton()
+        placeButton = self.ui.bboxPlaceWidget.placeButton()
 
         if self.prev_caller is not None and caller.GetID() == self.prev_caller.GetID():
             print("placed!")
@@ -196,10 +196,10 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             newROINode.GetDisplayNode().SetActiveColor(0, 1, 0)
             
             # Set the new ROI node on the place widget.
-            self._sam2ROINode = newROINode
-            self.ui.sam2PlaceWidget.setCurrentNode(newROINode)
+            self._bbox2ROINode = newROINode
+            self.ui.bboxPlaceWidget.setCurrentNode(newROINode)
             
-            self._sam2ROINode.AddObserver(
+            self._bbox2ROINode.AddObserver(
                 slicer.vtkMRMLMarkupsNode.PointPositionDefinedEvent,
                 self.onROIPlaced
             )
@@ -209,14 +209,14 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         else:
             print('nope')
 
-        # self.ui.sam2PlaceWidget.placeButton().setChecked(True)
+        # self.ui.bboxPlaceWidget.placeButton().setChecked(True)
 
         self.prev_caller = caller
     
     def install_dependencies(self):
         dependencies = {
             'xxhash': 'xxhash==3.5.0',
-            'requests_toolbelt': 'requests_toolbelt==1.0.0'
+            'requests_toolbelt': 'requests_toolbelt==1.0.0',
         }
 
         for dependency in dependencies:
@@ -406,11 +406,24 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             
             print('271 took', time.time() - t0)
             t0 = time.time()
+
+            from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
+
+            def my_callback(monitor):
+                print('my_callback!!!!')
+                print(monitor.bytes_read / len(compressed_data) * 100)
+                self.ui.uploadProgressBar.setValue(monitor.bytes_read / len(compressed_data) * 100)
+
+            e = MultipartEncoder(
+                fields=files
+            )
+            m = MultipartEncoderMonitor(e, my_callback)
             
             response = requests.post(
                 url,
-                files=files,
-                headers={"Content-Encoding": "gzip"}
+                # files=files,
+                data=m,
+                headers={"Content-Encoding": "gzip", 'Content-Type': m.content_type}
             )
             print('Response took', time.time() - t0)
             
@@ -559,7 +572,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
 
         return segmentationNode, selectedSegmentID
     
-    def image_changed(self):
+    def image_changed(self, do_prev_image_update=True):
         image_data = self.get_image_data()
         if image_data is None:
             print("No volume node found")
@@ -567,7 +580,9 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
         old_image_data = self.previous_states.get("image_data", None)
         image_changed =  old_image_data is None or not np.all(old_image_data == image_data)
-        self.previous_states["image_data"] = copy.deepcopy(image_data)
+
+        if do_prev_image_update:
+            self.previous_states["image_data"] = copy.deepcopy(image_data)
 
         return image_changed
 
@@ -762,6 +777,8 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     
     def start_point_placement(self):
         """Enter point placement mode"""
+        # if self.image_changed(do_prev_image_update=False):
+        #     self.setup_markups_points()
 
         markups_logic = slicer.modules.markups.logic()
         
@@ -798,36 +815,9 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     def stop_point_placement(self, reset_button=True):
         """Exit point placement mode"""
         print("Stopping placement mode...")
-        # Exit placement mode - try multiple methods for compatibility
-        try:
-            # Try various methods to stop place mode, as different versions use different methods
-            markups_logic = slicer.modules.markups.logic()
-            
-            # First try StopPlaceMode() (newer versions)
-            if hasattr(markups_logic, 'StopPlaceMode'):
-                markups_logic.StopPlaceMode()
-                print("Used StopPlaceMode()")
-            # Then try EndPlaceMode() (some versions)
-            elif hasattr(markups_logic, 'EndPlaceMode'):
-                markups_logic.EndPlaceMode()
-                print("Used EndPlaceMode()")
-            # Then try DeactivatePointModePlace() (older versions)
-            elif hasattr(markups_logic, 'DeactivatePointModePlace'):
-                markups_logic.DeactivatePointModePlace()
-                print("Used DeactivatePointModePlace()")
-            else:
-                # As a fallback, just print a warning once
-                if not hasattr(self, 'shown_placement_warning') or not self.shown_placement_warning:
-                    print("Warning: Could not find a method to stop place mode, but placement will still work")
-                    self.shown_placement_warning = True
-            
-            # Make sure the placement is actually stopped by deselecting the active node
-            # This is a common workaround when the explicit stop methods aren't available
-            markups_logic.SetActiveListID(None)
-            print("Set active list to None")
-        except Exception as e:
-            print(f"Error stopping place mode: {e}")
-            print("Placement functionality may still work")
+        
+        markups_logic = slicer.modules.markups.logic()
+        markups_logic.SetActiveListID(None)
         
         # Clean up observers
         for observer in self.point_placement_observers:
@@ -992,6 +982,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             
             # If already in placement mode, stop it first
             if self.is_placing_positive or self.is_placing_negative:
+                print('already in placement mode, stop it first')
                 self.stop_point_placement(reset_button=False)
             
             # Enter point placement mode based on current prompt type
