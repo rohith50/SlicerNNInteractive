@@ -52,12 +52,10 @@ def ensure_synched(func):
 def ensure_slicer_setup(func):
     def inner(self, *args, **kwargs):
         if slicer.mrmlScene.GetNodesByName("PromptPointsPositive").GetNumberOfItems() == 0:
-            # self.setup()
             self.previous_states = {}
             self.setup_markups_points()
             self.setup_shortcuts()
 
-        
         return func(self, *args, **kwargs)
     return inner
 
@@ -102,7 +100,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         _ = self.get_current_segment_id()
         self.previous_states = {}
         self._sync_in_progress = False
-    
+
     def update_server(self):
         # Get the updated server URL from the UI
         self.server = self.ui.Server.text
@@ -188,7 +186,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             slicer.vtkMRMLMarkupsNode.PointPositionDefinedEvent,
             self.onROIPlaced
         )
-     
+    
     def onROIPlaced(self, caller, event):
         # This method will be called every time a point is defined or moved
         # For example, if you only want to print once the user has placed at least 2 corners:
@@ -287,6 +285,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     def setup_shortcuts(self):
         shortcuts = {
             "o": self.on_interaction_point_clicked,
+            # "o": lambda: print('123'),
             "t": self.toggle_prompt_type,  # Add 'T' shortcut to toggle between positive/negative
         }
         self.shortcut_items = {}
