@@ -453,7 +453,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                     monitor.last_update = time.time()
 
                 if time.time() - monitor.last_update <= .2:
-                    print('time.time() - last_update:', time.time() - monitor.last_update)
                     return
                 monitor.last_update = time.time()
 
@@ -544,11 +543,13 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
         seg_response = requests.post(
             url, 
-            json={'outer_point_one': outer_point_one,
-                  'outer_point_two': outer_point_two,
-                  'positive_click': positive_click})
+            json={'outer_point_one': outer_point_one[::-1],
+                  'outer_point_two': outer_point_two[::-1],
+                #   'positive_click': positive_click})
+                  'positive_click': True})
         
         unpacked_segmentation = self.unpack_binary_segmentation(seg_response.content, decompress=False)
+        print('np.sum(unpacked_segmentation):', np.sum(unpacked_segmentation))
         self.show_segmentation(unpacked_segmentation)
     
     
@@ -957,15 +958,13 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         pos = [0, 0, 0]
         caller.GetNthControlPointPosition(0, pos)
         xyz = self.ras_to_xyz(pos)
+        
+        print('xyz!!!!!:', xyz)
 
         if self.prev_caller is not None and caller.GetID() == self.prev_caller.GetID():
             print("placed!")
             
             print(xyz, self.prev_roi_xyz)
-            
-            # print('abc')
-            # print('caller:', caller)
-            # print('event:', event)
             
             roiNode = slicer.mrmlScene.GetNodeByID(caller.GetID())
             
@@ -977,7 +976,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
 
             drawn_in_axis = np.argwhere(np.array(xyz) == self.prev_roi_xyz).squeeze()
             print('drawn_in_axis:', drawn_in_axis)
-            currentSize[drawn_in_axis] = 0  # set height to 100 mm
+            currentSize[drawn_in_axis] = 0 
 
 
             # Apply the new size
@@ -990,11 +989,19 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             placeButton.setChecked(False)
             placeButton.setEnabled(True)
             
+            print('xyz, self.prev_roi_xyz:', xyz, self.prev_roi_xyz)
+            
             volumeNode = self.get_volume_node()
             if volumeNode:                
-                # Call point_prompt with the voxel coordinates
-                self.bbox_prompt(outer_point_one=xyz, 
-                                 outer_point_two=self.prev_roi_xyz, 
+                outer_point_two=self.prev_roi_xyz
+                
+                outer_point_one = [xyz[0] * 2 - outer_point_two[0],
+                                   xyz[1] * 2 - outer_point_two[1],
+                                   xyz[2] * 2 - outer_point_two[2]]
+                
+                
+                self.bbox_prompt(outer_point_one=outer_point_one, 
+                                 outer_point_two=outer_point_two, 
                                  positive_click=self.is_placing_positive)
 
                 def _next():
@@ -1005,7 +1012,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             self.prev_caller = None
         else:
             print('nope')
-            print(caller)
+            # print(caller)
             self.prev_roi_xyz = xyz
             
             # displayNode = caller.GetDisplayNode()
