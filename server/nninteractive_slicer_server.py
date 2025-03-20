@@ -92,6 +92,27 @@ class PromptManager:
         self.session.add_point_interaction(point_coordinates, include_interaction=include_interaction)
         
         return self.target_tensor.clone().cpu().detach().numpy()
+    
+    def add_bbox_interaction(self, outer_point_one, outer_point_two, include_interaction):
+        # outer_point_one, outer_point_two are (x, y, z). they are for example the top left and bottom right point
+        print("outer_point_one, outer_point_two:", outer_point_one, outer_point_two)
+    
+        # Unpack the coordinates for clarity
+        x1, y1, z1 = outer_point_one
+        x2, y2, z2 = outer_point_two
+        
+        # For a 2D bounding box in the axial (XY) plane, we use the min and max of x and y.
+        # For the z-dimension, we choose a single slice.
+        # Here, we take the smaller z value and define the slice as [z, z+1].
+        bbox_coordinates = [
+            [min(x1, x2), max(x1, x2)],  # X: from min(x) to max(x)
+            [min(y1, y2), max(y1, y2)],  # Y: from min(y) to max(y)
+            [min(z1, z2), min(z1, z2) + 1]  # Z: single slice at the lower z
+        ]
+
+        self.session.add_point_interaction(bbox_coordinates, include_interaction=include_interaction)
+        
+        return self.target_tensor.clone().cpu().detach().numpy()
 
 
 PROMPT_MANAGER = PromptManager()
@@ -181,13 +202,13 @@ def get_segmentation_hash():
     return {"hash": md5_hash}
 
 
-class InferenceParams(BaseModel):
+class PointParams(BaseModel):
     voxel_coord: list[int]
     positive_click: bool
 
 
 @app.post("/add_point_interaction")
-async def add_point_interaction(params: InferenceParams):
+async def add_point_interaction(params: PointParams):
     t = time.time()
     if PROMPT_MANAGER.img is None:
         warnings.warn('There is no image in the server. Be sure to send it before')
@@ -200,6 +221,32 @@ async def add_point_interaction(params: InferenceParams):
     
     # seg_result = PROMPT_MANAGER.add_point_interaction(xyz)
     seg_result = PROMPT_MANAGER.add_point_interaction(xyz, include_interaction=positive_click)
+    
+    segmentation_binary_data = segmentation_binary(seg_result, compress=True)
+    print(f'Server whole infer function time: {time.time() - t}')
+    
+    # Return as binary data with appropriate content type
+    return Response(content=segmentation_binary_data, media_type="application/octet-stream", headers={"Content-Encoding": "gzip"})
+
+
+class BBoxParams(BaseModel):
+    outer_point_one: list[int]
+    outer_point_two: list[int]
+    positive_click: bool
+
+
+@app.post("/add_bbox_interaction")
+async def add_bbox_interaction(params: BBoxParams):
+    t = time.time()
+    if PROMPT_MANAGER.img is None:
+        warnings.warn('There is no image in the server. Be sure to send it before')
+        return []
+    
+    
+    # seg_result = PROMPT_MANAGER.add_point_interaction(xyz)
+    seg_result = PROMPT_MANAGER.add_bbox_interaction(params.outer_point_one, 
+                                                     params.outer_point_two,
+                                                     include_interaction=params.positive_click)
     
     segmentation_binary_data = segmentation_binary(seg_result, compress=True)
     print(f'Server whole infer function time: {time.time() - t}')

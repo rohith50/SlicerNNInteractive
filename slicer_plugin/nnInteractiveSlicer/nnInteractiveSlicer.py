@@ -538,6 +538,20 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
         self.show_segmentation(unpacked_segmentation)
     
+    @ensure_synched
+    def bbox_prompt(self, outer_point_one, outer_point_two, positive_click=False):
+        url = f"{self.server}/add_bbox_interaction"
+        
+        seg_response = requests.post(
+            url, 
+            json={'outer_point_one': outer_point_one,
+                  'outer_point_two': outer_point_two,
+                  'positive_click': positive_click})
+        
+        unpacked_segmentation = self.unpack_binary_segmentation(seg_response.content, decompress=False)
+        self.show_segmentation(unpacked_segmentation)
+    
+    
     def unpack_binary_segmentation(self, binary_data, decompress=False):
         """
         Unpacks binary data (1 bit per voxel) into a full 3D numpy array (bool type).
@@ -976,8 +990,17 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             placeButton.setChecked(False)
             placeButton.setEnabled(True)
             
-            self.setup_bbox()
-            qt.QTimer.singleShot(0, lambda: placeButton.click())
+            volumeNode = self.get_volume_node()
+            if volumeNode:                
+                # Call point_prompt with the voxel coordinates
+                self.bbox_prompt(outer_point_one=xyz, 
+                                 outer_point_two=self.prev_roi_xyz, 
+                                 positive_click=self.is_placing_positive)
+
+                def _next():
+                    self.setup_bbox()
+                    placeButton.click()
+                qt.QTimer.singleShot(0, _next)
             
             self.prev_caller = None
         else:
