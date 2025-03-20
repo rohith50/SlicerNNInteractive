@@ -30,7 +30,7 @@ RUN /bin/bash -c "\
 RUN /opt/conda/bin/conda install pip
 
 RUN /opt/conda/envs/nnInteractive/bin/python3.12 -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
-RUN /opt/conda/envs/nnInteractive/bin/python3.12 -m pip install nninteractive
+RUN /opt/conda/envs/nnInteractive/bin/python3.12 -m pip install nninteractive==1.0.1
 
 WORKDIR /opt/server
 
