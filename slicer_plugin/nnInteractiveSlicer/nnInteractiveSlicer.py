@@ -139,22 +139,30 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         # Connect Interaction Tools buttons
         self.ui.pbInteractionPoint.clicked.connect(self.on_interaction_point_clicked)
 
-        bbox2ROINode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsROINode")
-        # bbox2ROINode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsPlaneNode")
-        bbox2ROINode.SetName("BBox ROI")
-        bbox2ROINode.CreateDefaultDisplayNodes()
-        bbox2ROINode.GetDisplayNode().SetFillOpacity(0.4)
-        bbox2ROINode.GetDisplayNode().SetSelectedColor(0, 1, 0)
-        bbox2ROINode.GetDisplayNode().SetColor(0, 1, 0)
-        bbox2ROINode.GetDisplayNode().SetActiveColor(0, 1, 0)
-        self._bbox2ROINode = bbox2ROINode
+    def setup_bbox(self):
+        bboxROINode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsROINode")
+        # bboxROINode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsPlaneNode")
+        bboxROINode.SetName("BBox ROI")
+        bboxROINode.CreateDefaultDisplayNodes()
+        bboxROINode.GetDisplayNode().SetFillOpacity(0.)
+        bboxROINode.GetDisplayNode().SetOutlineOpacity(.5)
+        bboxROINode.GetDisplayNode().SetSelectedColor(0, 0, 1)
+        bboxROINode.GetDisplayNode().SetColor(0, 0, 1)
+        bboxROINode.GetDisplayNode().SetActiveColor(0, 0, 1)
+        bboxROINode.GetDisplayNode().SetSliceProjectionColor(0, 0, 1)
+        bboxROINode.GetDisplayNode().SetInteractionHandleScale(1)
+        bboxROINode.GetDisplayNode().SetGlyphScale(0)
+        bboxROINode.GetDisplayNode().SetHandlesInteractive(False)
+        bboxROINode.GetDisplayNode().SetTextScale(0)  # Hide text labels
+         
+        self._bboxROINode = bboxROINode
 
         self.ui.bboxPlaceWidget.setMRMLScene(slicer.mrmlScene)
         self.ui.bboxPlaceWidget.placeButton().toolTip = _("BBox Prompt")
         self.ui.bboxPlaceWidget.buttonsVisible = False
         self.ui.bboxPlaceWidget.placeButton().show()
         self.ui.bboxPlaceWidget.deleteButton().hide()
-        self.ui.bboxPlaceWidget.setCurrentNode(self._bbox2ROINode)
+        self.ui.bboxPlaceWidget.setCurrentNode(self._bboxROINode)
 
         placeButton = self.ui.bboxPlaceWidget.placeButton()
         placeButton.setText("BBox")
@@ -162,7 +170,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         # Optionally, remove any existing icon:
         placeButton.setIcon(qt.QIcon())
         placeButton.setStyleSheet("min-height: 22px; font-size: 13pt;")
-        self.ui.bboxPlaceWidget.deleteButton().hide()
 
         placeButton = self.ui.bboxPlaceWidget.placeButton()
 
@@ -183,49 +190,55 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         """)
 
         self.prev_caller = None
-        self._bbox2ROINode.AddObserver(
+        self._bboxROINode.AddObserver(
             slicer.vtkMRMLMarkupsNode.PointPositionDefinedEvent,
-            self.onROIPlaced
+            self.on_roi_placed
         )
-    
-    def onROIPlaced(self, caller, event):
-        # This method will be called every time a point is defined or moved
-        # For example, if you only want to print once the user has placed at least 2 corners:
-        # print(event)
-        placeButton = self.ui.bboxPlaceWidget.placeButton()
 
-        if self.prev_caller is not None and caller.GetID() == self.prev_caller.GetID():
-            print("placed!")
-            # Reset the button state so it appears enabled
-            placeButton.setChecked(False)
-            placeButton.setEnabled(True)
-            
-            # Create a new ROI node for further placement.
-            newROINode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsROINode")
-            newROINode.SetName("SAM2 ROI")
-            newROINode.CreateDefaultDisplayNodes()
-            newROINode.GetDisplayNode().SetFillOpacity(0.4)
-            newROINode.GetDisplayNode().SetSelectedColor(0, 1, 0)
-            newROINode.GetDisplayNode().SetColor(0, 1, 0)
-            newROINode.GetDisplayNode().SetActiveColor(0, 1, 0)
-            
-            # Set the new ROI node on the place widget.
-            self._bbox2ROINode = newROINode
-            self.ui.bboxPlaceWidget.setCurrentNode(newROINode)
-            
-            self._bbox2ROINode.AddObserver(
-                slicer.vtkMRMLMarkupsNode.PointPositionDefinedEvent,
-                self.onROIPlaced
-            )
-            qt.QTimer.singleShot(100, lambda: placeButton.click())
-            
-            self.prev_caller = None
-        else:
-            print('nope')
+    def setup_markups_points(self):
+        """Initialize the markups fiducial list for storing point prompts"""
+        # Remove any existing points nodes first to avoid duplicates
+        for node_name in ["PromptPointsPositive", "PromptPointsNegative", "BBox ROI"]:
+            existing_points = slicer.mrmlScene.GetNodesByName(node_name)
+            if existing_points and existing_points.GetNumberOfItems() > 0:
+                for i in range(existing_points.GetNumberOfItems()):
+                    slicer.mrmlScene.RemoveNode(existing_points.GetItemAsObject(i))
+        
+        # Create separate nodes for positive and negative points        
+        self.positive_points_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode", "PromptPointsPositive")
+        self.positive_points_node.CreateDefaultDisplayNodes()
+        
+        self.negative_points_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode", "PromptPointsNegative")
+        self.negative_points_node.CreateDefaultDisplayNodes()
+        
+        # Configure display properties for positive points (green)
+        pos_display_node = self.positive_points_node.GetDisplayNode()
+        pos_display_node.SetTextScale(0)  # Hide text labels
+        pos_display_node.SetGlyphScale(0.75)  # Make the points larger
+        pos_display_node.SetColor(0.0, 1.0, 0.0)  # Green color
+        pos_display_node.SetSelectedColor(0.0, 1.0, 0.0)
+        pos_display_node.SetOpacity(1.0)  # Fully opaque
+        pos_display_node.SetSliceProjection(False)  # Make points visible in all slice views
+        
+        # Configure display properties for negative points (red)
+        neg_display_node = self.negative_points_node.GetDisplayNode()
+        neg_display_node.SetTextScale(0)  # Hide text labels
+        neg_display_node.SetGlyphScale(0.75)  # Make the points larger
+        neg_display_node.SetColor(1.0, 0.0, 0.0)  # Red color
+        neg_display_node.SetSelectedColor(1.0, 0.0, 0.0)
+        neg_display_node.SetOpacity(1.0)  # Fully opaque
+        neg_display_node.SetSliceProjection(False)  # Make points visible in all slice views
 
-        # self.ui.bboxPlaceWidget.placeButton().setChecked(True)
-
-        self.prev_caller = caller
+        self.clear_points()
+        self.setup_bbox()
+        
+        # Setup for interactive placement
+        self.is_placing_positive = False
+        self.is_placing_negative = False
+        self.point_placement_observers = []
+        
+        # Flag to track if we've shown the placement mode warning
+        self.shown_placement_warning = False
     
     def install_dependencies(self):
         dependencies = {
@@ -661,50 +674,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     def __del__(self):
         # pass
         self.remove_shortcut_items()
-
-    def setup_markups_points(self):
-        """Initialize the markups fiducial list for storing point prompts"""
-        # Remove any existing points nodes first to avoid duplicates
-        for node_name in ["PromptPointsPositive", "PromptPointsNegative"]:
-            existing_points = slicer.mrmlScene.GetNodesByName(node_name)
-            if existing_points and existing_points.GetNumberOfItems() > 0:
-                for i in range(existing_points.GetNumberOfItems()):
-                    slicer.mrmlScene.RemoveNode(existing_points.GetItemAsObject(i))
-        
-        # Create separate nodes for positive and negative points        
-        self.positive_points_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode", "PromptPointsPositive")
-        self.positive_points_node.CreateDefaultDisplayNodes()
-        
-        self.negative_points_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode", "PromptPointsNegative")
-        self.negative_points_node.CreateDefaultDisplayNodes()
-        
-        # Configure display properties for positive points (green)
-        pos_display_node = self.positive_points_node.GetDisplayNode()
-        pos_display_node.SetTextScale(0)  # Hide text labels
-        pos_display_node.SetGlyphScale(0.75)  # Make the points larger
-        pos_display_node.SetColor(0.0, 1.0, 0.0)  # Green color
-        pos_display_node.SetSelectedColor(0.0, 1.0, 0.0)
-        pos_display_node.SetOpacity(1.0)  # Fully opaque
-        pos_display_node.SetSliceProjection(False)  # Make points visible in all slice views
-        
-        # Configure display properties for negative points (red)
-        neg_display_node = self.negative_points_node.GetDisplayNode()
-        neg_display_node.SetTextScale(0)  # Hide text labels
-        neg_display_node.SetGlyphScale(0.75)  # Make the points larger
-        neg_display_node.SetColor(1.0, 0.0, 0.0)  # Red color
-        neg_display_node.SetSelectedColor(1.0, 0.0, 0.0)
-        neg_display_node.SetOpacity(1.0)  # Fully opaque
-        neg_display_node.SetSliceProjection(False)  # Make points visible in all slice views
-
-        self.clear_points()
-        
-        # Setup for interactive placement
-        self.is_placing_positive = False
-        self.is_placing_negative = False
-        self.point_placement_observers = []
-        
-        # Flag to track if we've shown the placement mode warning
-        self.shown_placement_warning = False
     
     def clear_points(self):
         # Track points
@@ -937,27 +906,104 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
         volumeNode = self.get_volume_node()
         if volumeNode:
-            # Apply any transforms to get volume's RAS coordinates
-            transformRasToVolumeRas = vtk.vtkGeneralTransform()
-            slicer.vtkMRMLTransformNode.GetTransformBetweenNodes(None, volumeNode.GetParentTransformNode(), transformRasToVolumeRas)
-            point_VolumeRas = transformRasToVolumeRas.TransformPoint(pos)
-            
-            # Convert to IJK coordinates
-            volumeRasToIjk = vtk.vtkMatrix4x4()
-            volumeNode.GetRASToIJKMatrix(volumeRasToIjk)
-            point_Ijk = [0, 0, 0, 1]
-            volumeRasToIjk.MultiplyPoint(list(point_VolumeRas) + [1.0], point_Ijk)
-            xyz = [int(round(c)) for c in point_Ijk[0:3]]
-            
-            print(f"Converted point to voxel coordinates: {xyz}")
+            xyz = self.ras_to_xyz(pos)
             
             # Call point_prompt with the voxel coordinates
             self.point_prompt(xyz=xyz, positive_click=is_positive)
 
             # Instead of immediately starting a new placement, use a timer with short delay
             # to ensure the current placement mode is fully complete
-            qt.QTimer.singleShot(100, self.start_point_placement)
+            qt.QTimer.singleShot(0, self.start_point_placement)
             print("Scheduled point placement restart with timer")
+    
+    def ras_to_xyz(self, pos):
+        volumeNode = self.get_volume_node()
+        # Apply any transforms to get volume's RAS coordinates
+        transformRasToVolumeRas = vtk.vtkGeneralTransform()
+        slicer.vtkMRMLTransformNode.GetTransformBetweenNodes(None, volumeNode.GetParentTransformNode(), transformRasToVolumeRas)
+        point_VolumeRas = transformRasToVolumeRas.TransformPoint(pos)
+        
+        # Convert to IJK coordinates
+        volumeRasToIjk = vtk.vtkMatrix4x4()
+        volumeNode.GetRASToIJKMatrix(volumeRasToIjk)
+        point_Ijk = [0, 0, 0, 1]
+        volumeRasToIjk.MultiplyPoint(list(point_VolumeRas) + [1.0], point_Ijk)
+        xyz = [int(round(c)) for c in point_Ijk[0:3]]
+        
+        print(f"Converted point to voxel coordinates: {xyz}")
+        
+        return xyz
+    
+    def on_roi_placed(self, caller, event):
+        # This method will be called every time a point is defined or moved
+        # For example, if you only want to print once the user has placed at least 2 corners:
+        # print(event)
+        placeButton = self.ui.bboxPlaceWidget.placeButton()
+        
+        pos = [0, 0, 0]
+        caller.GetNthControlPointPosition(0, pos)
+        xyz = self.ras_to_xyz(pos)
+
+        if self.prev_caller is not None and caller.GetID() == self.prev_caller.GetID():
+            print("placed!")
+            
+            print(xyz, self.prev_roi_xyz)
+            
+            # print('abc')
+            # print('caller:', caller)
+            # print('event:', event)
+            
+            roiNode = slicer.mrmlScene.GetNodeByID(caller.GetID())
+            
+            # Get the ROI node (make sure the name matches what you have in your scene)
+            # roiNode = slicer.util.getNode("BBox ROI")
+
+            # Get the current size as a list; for an unrotated ROI, this is typically [size_X, size_Y, size_Z]
+            currentSize = list(roiNode.GetSize())
+
+            drawn_in_axis = np.argwhere(np.array(xyz) == self.prev_roi_xyz).squeeze()
+            print('drawn_in_axis:', drawn_in_axis)
+            currentSize[drawn_in_axis] = 0  # set height to 100 mm
+
+
+            # Apply the new size
+            roiNode.SetSize(currentSize)
+            
+            print('currentSize:', currentSize)
+        
+            
+            # Reset the button state so it appears enabled
+            placeButton.setChecked(False)
+            placeButton.setEnabled(True)
+            
+            self.setup_bbox()
+            qt.QTimer.singleShot(0, lambda: placeButton.click())
+            
+            self.prev_caller = None
+        else:
+            print('nope')
+            print(caller)
+            self.prev_roi_xyz = xyz
+            
+            # displayNode = caller.GetDisplayNode()
+            # viewNodeIDs = []
+            # numberOfViews = displayNode.GetNumberOfViewNodeIDs()
+            # for i in range(numberOfViews):
+            #     viewNodeIDs.append(displayNode.GetViewNodeID(i))
+            # print('numberOfViews:', viewNodeIDs)
+            # for viewNodeID in viewNodeIDs:
+            #     viewNode = slicer.mrmlScene.GetNodeByID(viewNodeID)
+            #     print("Markup is visible in view:", viewNode.GetName())
+            
+            # layoutManager = slicer.app.layoutManager()
+            # # Assuming the active slice widget is one of the standard ones (Red, Yellow, or Green)
+            # activeSliceWidget = layoutManager.sliceWidget(layoutManager.activeWindow())
+            # if activeSliceWidget:
+            #     activeSliceViewName = activeSliceWidget.sliceLogic().GetSliceNode().GetLayoutName()
+            #     print("Active slice view:", activeSliceViewName)
+
+        self.prev_caller = caller
+
 
     @ensure_slicer_setup
     def on_prompt_type_positive_clicked(self, checked=False):
