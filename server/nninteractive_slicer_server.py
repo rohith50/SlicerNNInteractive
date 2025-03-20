@@ -101,16 +101,15 @@ class PromptManager:
         x1, y1, z1 = outer_point_one
         x2, y2, z2 = outer_point_two
         
-        # For a 2D bounding box in the axial (XY) plane:
-        # - Compute min and max for x and y.
-        # - For z, choose a single slice by taking the lower z value and defining the interval as [z, z+1].
-        bbox_coordinates = np.array([
-            [min(x1, x2), max(x1, x2)],  # X: from min(x) to max(x)
-            [min(y1, y2), max(y1, y2)],  # Y: from min(y) to max(y)
-            [min(z1, z2), min(z1, z2) + 1]  # Z: single slice at the lower z
-        ])
+        # Define the 2D bounding box in the axial (XY) plane:
+        # For x and y, take the min and max values.
+        # For z, choose a single slice by taking the lower z value and defining the interval as [z, z+1].
+        bbox_coordinates = [
+            [int(min(x1, x2)), int(max(x1, x2))],  # X: convert to Python ints
+            [int(min(y1, y2)), int(max(y1, y2))],  # Y: convert to Python ints
+            [int(min(z1, z2)), int(min(z1, z2)) + 1]  # Z: single slice
+        ]
         
-        # Passing a numpy array enables element-wise subtraction in the library's coordinate transformation.
         self.session.add_point_interaction(bbox_coordinates, include_interaction=include_interaction)
         
         return self.target_tensor.clone().cpu().detach().numpy()
