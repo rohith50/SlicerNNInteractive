@@ -51,7 +51,7 @@ class PromptManager:
         session = nnInteractiveInferenceSession(
             device=torch.device("cuda:0"),  # Set inference device
             use_torch_compile=False,  # Experimental: Not tested yet
-            verbose=False,
+            verbose=True,
             torch_n_threads=os.cpu_count(),  # Use available CPU cores
             do_autozoom=True,  # Enables AutoZoom for better patching
             use_pinned_memory=True,  # Optimizes GPU memory transfers
@@ -87,6 +87,9 @@ class PromptManager:
             self.session.add_initial_seg_interaction(mask)
     
     def add_point_interaction(self, point_coordinates, include_interaction):
+        print('self.session.target_buffer.shape:', self.session.target_buffer.shape)
+        print('self.img.shape:', self.img.shape)
+        
         # point_coordinates is (x, y, z)
         print('point_coordinates:', point_coordinates)
         self.session.add_point_interaction(point_coordinates, include_interaction=include_interaction)
@@ -94,25 +97,56 @@ class PromptManager:
         return self.target_tensor.clone().cpu().detach().numpy()
     
     def add_bbox_interaction(self, outer_point_one, outer_point_two, include_interaction):
-        # outer_point_one, outer_point_two are (x, y, z). They represent, for example, the top left and bottom right points.
+        # outer_point_one and outer_point_two are (x, y, z) coordinates.
         print("outer_point_one, outer_point_two:", outer_point_one, outer_point_two)
         
-        # Unpack the coordinates
-        x1, y1, z1 = outer_point_one
-        x2, y2, z2 = outer_point_two
+        # outer_point_one = [170, 170, 39]
+        # outer_point_two = [230, 230, 39]
         
-        # Define the 2D bounding box in the axial (XY) plane:
-        # For x and y, take the min and max values.
-        # For z, choose a single slice by taking the lower z value and defining the interval as [z, z+1].
-        bbox_coordinates = [
-            [int(min(x1, x2)), int(max(x1, x2))],  # X: convert to Python ints
-            [int(min(y1, y2)), int(max(y1, y2))],  # Y: convert to Python ints
-            [int(min(z1, z2)), int(min(z1, z2)) + 1]  # Z: single slice
+        # Create an array from the two points and compute min and max for each coordinate.
+        data = np.array([outer_point_one, outer_point_two])
+        _min = np.min(data, axis=0)
+        _max = np.max(data, axis=0)
+        
+        # Construct the bounding box as [[xmin, xmax], [ymin, ymax], [zmin, zmax]].
+        bbox = [
+            [int(_min[0]), int(_max[0])],
+            [int(_min[1]), int(_max[1])],
+            [int(_min[2]), int(_max[2])],
         ]
         
-        self.session.add_point_interaction(bbox_coordinates, include_interaction=include_interaction)
+        print('bbox:', bbox)
+        
+        # Call the session's bounding box interaction function.
+        self.session.add_bbox_interaction(bbox, include_interaction=include_interaction)
         
         return self.target_tensor.clone().cpu().detach().numpy()
+    
+    # def add_bbox_interaction(self, outer_point_one, outer_point_two, include_interaction):
+    #     # outer_point_one, outer_point_two are (x, y, z). They represent, for example, the top left and bottom right points.
+    #     print("outer_point_one, outer_point_two:", outer_point_one, outer_point_two)
+        
+    #     outer_point_one = [170, 170, 39]
+    #     outer_point_two = [230, 230, 39]
+        
+    #     # Unpack the coordinates
+    #     x1, y1, z1 = outer_point_one
+    #     x2, y2, z2 = outer_point_two
+        
+    #     # Define the 2D bounding box in the axial (XY) plane:
+    #     # For x and y, take the min and max values.
+    #     # For z, choose a single slice by taking the lower z value and defining the interval as [z, z+1].
+    #     bbox_coordinates = [
+    #         [np.array(int(min(x1, x2))), np.array(int(max(x1, x2)))],  # X: convert to Python ints
+    #         [np.array(int(min(y1, y2))), np.array(int(max(y1, y2)))],  # Y: convert to Python ints
+    #         [np.array(int(min(z1, z2))), np.array(int(min(z1, z2))) + 1]  # Z: single slice
+    #     ]
+        
+    #     print('bbox_coordinates:', bbox_coordinates)
+        
+    #     self.session.add_point_interaction(bbox_coordinates[::-1], include_interaction=include_interaction)
+        
+    #     return self.target_tensor.clone().cpu().detach().numpy()
 
 
 PROMPT_MANAGER = PromptManager()
