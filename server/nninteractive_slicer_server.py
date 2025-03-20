@@ -94,22 +94,23 @@ class PromptManager:
         return self.target_tensor.clone().cpu().detach().numpy()
     
     def add_bbox_interaction(self, outer_point_one, outer_point_two, include_interaction):
-        # outer_point_one, outer_point_two are (x, y, z). they are for example the top left and bottom right point
+        # outer_point_one, outer_point_two are (x, y, z). They represent, for example, the top left and bottom right points.
         print("outer_point_one, outer_point_two:", outer_point_one, outer_point_two)
-    
-        # Unpack the coordinates for clarity
+        
+        # Unpack the coordinates
         x1, y1, z1 = outer_point_one
         x2, y2, z2 = outer_point_two
         
-        # For a 2D bounding box in the axial (XY) plane, we use the min and max of x and y.
-        # For the z-dimension, we choose a single slice.
-        # Here, we take the smaller z value and define the slice as [z, z+1].
-        bbox_coordinates = [
+        # For a 2D bounding box in the axial (XY) plane:
+        # - Compute min and max for x and y.
+        # - For z, choose a single slice by taking the lower z value and defining the interval as [z, z+1].
+        bbox_coordinates = np.array([
             [min(x1, x2), max(x1, x2)],  # X: from min(x) to max(x)
             [min(y1, y2), max(y1, y2)],  # Y: from min(y) to max(y)
             [min(z1, z2), min(z1, z2) + 1]  # Z: single slice at the lower z
-        ]
-
+        ])
+        
+        # Passing a numpy array enables element-wise subtraction in the library's coordinate transformation.
         self.session.add_point_interaction(bbox_coordinates, include_interaction=include_interaction)
         
         return self.target_tensor.clone().cpu().detach().numpy()
