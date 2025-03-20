@@ -123,8 +123,8 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.ui.Server.editingFinished.connect(self.update_server)
         
         # Set up style sheets for selected/unselected buttons
-        self.selected_style = "background-color: #3498db; color: white;"
-        self.unselected_style = ""
+        self.selected_style = "background-color: #3498db; color: white; min-height: 28px; font-size: 13pt;"
+        self.unselected_style = "min-height: 28px; font-size: 13pt;"
         
         # Set initial prompt type
         self.current_prompt_type_positive = True
@@ -141,7 +141,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
 
     def setup_bbox(self):
         bboxROINode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsROINode")
-        # bboxROINode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsPlaneNode")
         bboxROINode.SetName("BBox ROI")
         bboxROINode.CreateDefaultDisplayNodes()
         bboxROINode.GetDisplayNode().SetFillOpacity(0.)
@@ -153,7 +152,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         bboxROINode.GetDisplayNode().SetInteractionHandleScale(1)
         bboxROINode.GetDisplayNode().SetGlyphScale(0)
         bboxROINode.GetDisplayNode().SetHandlesInteractive(False)
-        bboxROINode.GetDisplayNode().SetTextScale(0)  # Hide text labels
+        bboxROINode.GetDisplayNode().SetTextScale(0)
          
         self._bboxROINode = bboxROINode
 
@@ -163,6 +162,8 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.ui.bboxPlaceWidget.placeButton().show()
         self.ui.bboxPlaceWidget.deleteButton().hide()
         self.ui.bboxPlaceWidget.setCurrentNode(self._bboxROINode)
+        
+        self.ui.bboxPlaceWidget.placeButton().clicked.connect(self.on_interaction_bbox_clicked)
 
         placeButton = self.ui.bboxPlaceWidget.placeButton()
         placeButton.setText("BBox")
@@ -545,8 +546,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             url, 
             json={'outer_point_one': outer_point_one[::-1],
                   'outer_point_two': outer_point_two[::-1],
-                #   'positive_click': positive_click})
-                  'positive_click': True})
+                  'positive_click': positive_click})
         
         unpacked_segmentation = self.unpack_binary_segmentation(seg_response.content, decompress=False)
         print('np.sum(unpacked_segmentation):', np.sum(unpacked_segmentation))
@@ -874,7 +874,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
         # Determine which node called this (positive or negative)
         active_node = caller
-        is_positive = (active_node == self.positive_points_node)
+        is_positive = self.ui.pbPromptTypePositive.isChecked()
             
         n = active_node.GetNumberOfControlPoints() - 1
         if n < 0:
@@ -1002,7 +1002,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                 
                 self.bbox_prompt(outer_point_one=outer_point_one, 
                                  outer_point_two=outer_point_two, 
-                                 positive_click=self.is_placing_positive)
+                                 positive_click=self.ui.pbPromptTypePositive.isChecked())
 
                 def _next():
                     self.setup_bbox()
@@ -1011,26 +1011,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             
             self.prev_caller = None
         else:
-            print('nope')
-            # print(caller)
             self.prev_roi_xyz = xyz
-            
-            # displayNode = caller.GetDisplayNode()
-            # viewNodeIDs = []
-            # numberOfViews = displayNode.GetNumberOfViewNodeIDs()
-            # for i in range(numberOfViews):
-            #     viewNodeIDs.append(displayNode.GetViewNodeID(i))
-            # print('numberOfViews:', viewNodeIDs)
-            # for viewNodeID in viewNodeIDs:
-            #     viewNode = slicer.mrmlScene.GetNodeByID(viewNodeID)
-            #     print("Markup is visible in view:", viewNode.GetName())
-            
-            # layoutManager = slicer.app.layoutManager()
-            # # Assuming the active slice widget is one of the standard ones (Red, Yellow, or Green)
-            # activeSliceWidget = layoutManager.sliceWidget(layoutManager.activeWindow())
-            # if activeSliceWidget:
-            #     activeSliceViewName = activeSliceWidget.sliceLogic().GetSliceNode().GetLayoutName()
-            #     print("Active slice view:", activeSliceViewName)
 
         self.prev_caller = caller
 
@@ -1098,6 +1079,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             self.interaction_tool_mode = 'point'
 
             self.ui.pbInteractionPoint.setStyleSheet(self.selected_style)
+            # self.ui.bboxPlaceWidget.placeButton().setStyleSheet(self.unselected_style)
             
             # If already in placement mode, stop it first
             if self.is_placing_positive or self.is_placing_negative:
@@ -1119,19 +1101,12 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             # Reset style if unchecked
             self.ui.pbInteractionPoint.setStyleSheet(self.unselected_style)
             self.stop_point_placement(reset_button=True)
-    
-    def reset_interaction_tools(self):
-        """Reset all interaction tool buttons to unchecked state"""
-        # List all interaction tools
-        interaction_buttons = [
-            self.ui.pbInteractionPoint,
-            self.ui.pbInteractionBBox,
-            self.ui.pbInteractionScribble,
-            self.ui.pbInteractionLasso
-        ]
-        
-        # Uncheck and reset style for all
-        for button in interaction_buttons:
-            button.setChecked(False)
-            button.setStyleSheet(self.unselected_style)
+            self.start_point_placement()
 
+    @ensure_slicer_setup
+    def on_interaction_bbox_clicked(self, checked=False):
+        print('checked:', checked)
+        
+        if checked:
+            self.ui.pbInteractionPoint.setStyleSheet(self.unselected_style)
+        
