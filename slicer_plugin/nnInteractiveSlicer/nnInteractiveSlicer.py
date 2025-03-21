@@ -140,28 +140,28 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.ui.pbInteractionPoint.clicked.connect(self.on_interaction_point_clicked)
 
     def setup_bbox(self):
-        bboxROINode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsROINode")
-        bboxROINode.SetName("BBox ROI")
-        bboxROINode.CreateDefaultDisplayNodes()
-        bboxROINode.GetDisplayNode().SetFillOpacity(0.)
-        bboxROINode.GetDisplayNode().SetOutlineOpacity(.5)
-        bboxROINode.GetDisplayNode().SetSelectedColor(0, 0, 1)
-        bboxROINode.GetDisplayNode().SetColor(0, 0, 1)
-        bboxROINode.GetDisplayNode().SetActiveColor(0, 0, 1)
-        bboxROINode.GetDisplayNode().SetSliceProjectionColor(0, 0, 1)
-        bboxROINode.GetDisplayNode().SetInteractionHandleScale(1)
-        bboxROINode.GetDisplayNode().SetGlyphScale(0)
-        bboxROINode.GetDisplayNode().SetHandlesInteractive(False)
-        bboxROINode.GetDisplayNode().SetTextScale(0)
-         
-        self._bboxROINode = bboxROINode
+        self.bbox_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsROINode")
+        self.bbox_node.SetName("BBox ROI")
+        self.bbox_node.CreateDefaultDisplayNodes()
+        bbox_dn = self.bbox_node.GetDisplayNode()
+        
+        bbox_dn.SetFillOpacity(0.)
+        bbox_dn.SetOutlineOpacity(.5)
+        bbox_dn.SetSelectedColor(0, 0, 1)
+        bbox_dn.SetColor(0, 0, 1)
+        bbox_dn.SetActiveColor(0, 0, 1)
+        bbox_dn.SetSliceProjectionColor(0, 0, 1)
+        bbox_dn.SetInteractionHandleScale(1)
+        bbox_dn.SetGlyphScale(0)
+        bbox_dn.SetHandlesInteractive(False)
+        bbox_dn.SetTextScale(0)
 
         self.ui.bboxPlaceWidget.setMRMLScene(slicer.mrmlScene)
         self.ui.bboxPlaceWidget.placeButton().toolTip = _("BBox Prompt")
         self.ui.bboxPlaceWidget.buttonsVisible = False
         self.ui.bboxPlaceWidget.placeButton().show()
         self.ui.bboxPlaceWidget.deleteButton().hide()
-        self.ui.bboxPlaceWidget.setCurrentNode(self._bboxROINode)
+        self.ui.bboxPlaceWidget.setCurrentNode(self.bbox_node)
         
         self.ui.bboxPlaceWidget.placeButton().clicked.connect(self.on_interaction_bbox_clicked)
 
@@ -190,8 +190,8 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             }
         """)
 
-        self.prev_caller = None
-        self._bboxROINode.AddObserver(
+        self.prev_caller = None        
+        self.bbox_node.AddObserver(
             slicer.vtkMRMLMarkupsNode.PointPositionDefinedEvent,
             self.on_roi_placed
         )
@@ -701,9 +701,8 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         # Empty the markup fiducial nodes in the 3D Slicer scene
         if hasattr(self, 'positive_points_node') and self.positive_points_node:
             self.positive_points_node.RemoveAllControlPoints()
-            
-        if hasattr(self, 'negative_points_node') and self.negative_points_node:
-            self.negative_points_node.RemoveAllControlPoints()
+        
+        self.setup_bbox()
             
         # Force scene update
         slicer.mrmlScene.Modified()
@@ -1079,7 +1078,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             self.interaction_tool_mode = 'point'
 
             self.ui.pbInteractionPoint.setStyleSheet(self.selected_style)
-            # self.ui.bboxPlaceWidget.placeButton().setStyleSheet(self.unselected_style)
             
             # If already in placement mode, stop it first
             if self.is_placing_positive or self.is_placing_negative:
@@ -1101,7 +1099,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             # Reset style if unchecked
             self.ui.pbInteractionPoint.setStyleSheet(self.unselected_style)
             self.stop_point_placement(reset_button=True)
-            self.start_point_placement()
 
     @ensure_slicer_setup
     def on_interaction_bbox_clicked(self, checked=False):

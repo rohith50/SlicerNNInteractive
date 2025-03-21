@@ -1,0 +1,25 @@
+2025-03-20T14:15:21.000Z  INFO [slang.runtime:54] - Scarlet Slang v0.18.6
+2025-03-20T14:15:21.004Z  INFO [slang.runtime:55] - Java version: 21.0.5
+2025-03-20T14:15:21.005Z  INFO [slang.runtime:57] - Memory: total=190M, free=113M, max=4,096M
+2025-03-20T14:15:21.005Z  INFO [slang.runtime:61] - Git version: 2.43.0
+2025-03-20T14:15:21.093Z  INFO [slang.lsp.server:424] - [SERVER] Starting server...
+2025-03-20T14:15:21.105Z  INFO [slang.lsp.server:391] - Initializing... {:extension-version "0.18.6"}
+2025-03-20T14:15:21.128Z  DEBUG [slang.context.loader:1191] - Loading project file:///Users/coendevente/projects/plain/nninteractive-slicer {:idents #{:project.ident/main}, :working? true, :parse-docs? true, :load-specs? true, :load-links? true, :load-requirements? true, :root? true}
+2025-03-20T14:15:21.139Z  ERROR [slang.lsp.handlers:42] - initialize failed
+                              java.lang.VirtualThread.run          VirtualThread.java:  329
+java.util.concurrent.ThreadPerTaskExecutor$TaskRunner.run  ThreadPerTaskExecutor.java:  314
+   java.util.concurrent.CompletableFuture$AsyncSupply.run      CompletableFuture.java: 1773
+      java.util.concurrent.CompletableFuture.postComplete      CompletableFuture.java:  510
+java.util.concurrent.CompletableFuture$UniCompose.tryFire      CompletableFuture.java: 1150
+                              promesa.util.Function/apply                   util.cljc:   40
+slang.reader.project-reader/read-config-file-async*/fn/fn          project_reader.clj:  126
+  slang.reader.project-reader/no-project-config-exception          project_reader.clj:  119
+clojure.lang.ExceptionInfo: No config file found for project 'file:///Users/coendevente/projects/plain/nninteractive-slicer'
+    type: :slang.reader.project-reader/no-config
+
+
+2025-03-20T14:15:21.201Z  DEBUG [slang.lsp.handlers:29] - :initialize 77ms
+2025-03-20T14:15:21.243Z  DEBUG [slang.lsp.server.ui:125] - :publish-diagnostics 0ms
+2025-03-20T14:15:21.249Z  DEBUG [slang.lsp.handlers:171] - :sidebars/specs-by-category 4ms
+2025-03-20T14:15:21.250Z  DEBUG [slang.lsp.handlers:179] - :sidebars/processes 4ms
+2025-03-20T14:15:21.252Z  DEBUG [slang.lsp.handlers:175] - :sidebars/workflows 6ms
