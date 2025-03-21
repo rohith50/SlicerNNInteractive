@@ -764,23 +764,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         # 3. Add that last point back
         print(f'Adding point {last_point}')
         self.add_point_to_markup(last_point['position'], is_positive=is_positive)
-    
-    def get_ras_from_ijk(self, ijk_coords):
-        """Convert IJK (voxel) coordinates to RAS coordinates"""
-        volume_node = self.nninteractive_slicer_widget.get_volume_node()
-        if not volume_node:
-            return [0, 0, 0]
-            
-        # Convert IJK to RAS
-        ijkToRas = vtk.vtkMatrix4x4()
-        volume_node.GetIJKToRASMatrix(ijkToRas)
-        
-        # Apply the transformation
-        ijk_point = ijk_coords + [1.0]  # Add homogeneous coordinate
-        ras_point = [0, 0, 0, 1]
-        ijkToRas.MultiplyPoint(ijk_point, ras_point)
-        
-        return ras_point[0:3]
         
     def add_point_to_markup(self, ras_position, is_positive=True):
         """Add a point to the appropriate markup fiducial node"""
