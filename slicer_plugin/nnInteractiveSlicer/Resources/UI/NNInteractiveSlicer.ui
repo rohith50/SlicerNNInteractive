@@ -101,7 +101,10 @@
                                                 <item>
                                                     <layout class="QVBoxLayout" name="verticalLayout_tools">
                                                         <item>
-                                                            <widget class="QPushButton" name="pbInteractionPoint">
+                                                            <widget class="qSlicerMarkupsPlaceWidget" name="pointPlaceWidget">
+                                                                <property name="placeMultipleMarkups">
+                                                                    <enum>qSlicerMarkupsPlaceWidget::ForcePlaceSingleMarkup</enum>
+                                                                </property>
                                                                 <property name="minimumSize">
                                                                     <size>
                                                                         <width>0</width>
@@ -109,18 +112,25 @@
                                                                     </size>
                                                                 </property>
                                                                 <property name="toolTip">
-                                                                    <string>Place a point prompt (Press 'P' key to toggle)</string>
+                                                                    <string>Place a point</string>
                                                                 </property>
                                                                 <property name="text">
-                                                                    <string>Po̱int</string>
+                                                                    <string>Point2</string>
+                                                                </property>
+                                                                <property name="enabled">
+                                                                    <bool>true</bool>
                                                                 </property>
                                                                 <property name="checkable">
                                                                     <bool>true</bool>
                                                                 </property>
+                                                                <property name="visible">
+                                                                    <bool>true</bool>
+                                                                </property>
                                                             </widget>
                                                         </item>
+
+
                                                         <item>
-                                                            <!-- <widget class="QPushButton" name="pbInteractionBbox"> -->
                                                             <widget class="qSlicerMarkupsPlaceWidget" name="bboxPlaceWidget">
                                                                 <property name="placeMultipleMarkups">
                                                                     <enum>qSlicerMarkupsPlaceWidget::ForcePlaceSingleMarkup</enum>
@@ -132,7 +142,7 @@
                                                                     </size>
                                                                 </property>
                                                                 <property name="toolTip">
-                                                                    <string>Place a bounding box (not implemented)</string>
+                                                                    <string>Place a bounding box</string>
                                                                 </property>
                                                                 <property name="text">
                                                                     <string>ḆBox</string>
@@ -148,6 +158,7 @@
                                                                 </property>
                                                             </widget>
                                                         </item>
+
                                                         <item>
                                                             <widget class="QPushButton" name="pbInteractionScribble">
                                                                 <property name="minimumSize">
@@ -223,29 +234,6 @@
                                                             </widget>
                                                         </item>
                                                     </layout>
-                                                </item>
-                                            </layout>
-                                        </widget>
-                                    </item>
-
-                                    <item>
-                                        <widget class="QGroupBox" name="pointListGroup">
-                                            <property name="title">
-                                                <string>Point List</string>
-                                            </property>
-                                            <property name="minimumSize">
-                                                <size>
-                                                    <width>0</width>
-                                                    <height>200</height>
-                                                </size>
-                                            </property>
-                                            <layout class="QVBoxLayout" name="verticalLayout_13">
-                                                <item>
-                                                    <widget class="QListWidget" name="pointListWidget">
-                                                        <property name="alternatingRowColors">
-                                                            <bool>true</bool>
-                                                        </property>
-                                                    </widget>
                                                 </item>
                                             </layout>
                                         </widget>

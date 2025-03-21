@@ -88,10 +88,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.layout.addWidget(ui_widget)
         self.ui = slicer.util.childWidgetVariables(ui_widget)
         
-        # Flag to control point list visibility
-        self.show_prompt_lists = False
-        self.ui.pointListGroup.setVisible(self.show_prompt_lists)
-        
         self.add_segmentation_widget()
         self.add_module_icon_to_toolbar()
         self.setup_shortcuts()
@@ -135,103 +131,135 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.ui.pbPromptTypeNegative.clicked.connect(self.on_prompt_type_negative_clicked)
         
         self.interaction_tool_mode = None
-
-        # Connect Interaction Tools buttons
-        self.ui.pbInteractionPoint.clicked.connect(self.on_interaction_point_clicked)
-
+    
+    def display_node_markup_bbox(self, display_node):
+        display_node.SetFillOpacity(0.)
+        display_node.SetOutlineOpacity(.5)
+        display_node.SetSelectedColor(0, 0, 1)
+        display_node.SetColor(0, 0, 1)
+        display_node.SetActiveColor(0, 0, 1)
+        display_node.SetSliceProjectionColor(0, 0, 1)
+        display_node.SetInteractionHandleScale(1)
+        display_node.SetGlyphScale(0)
+        display_node.SetHandlesInteractive(False)
+        display_node.SetTextScale(0)
+    
+    def display_node_markup_point(self, display_node):
+        display_node.SetTextScale(0)  # Hide text labels
+        display_node.SetGlyphScale(0.75)  # Make the points larger
+        display_node.SetColor(0.0, 1.0, 0.0)  # Green color
+        display_node.SetSelectedColor(0.0, 1.0, 0.0)
+        display_node.SetOpacity(1.0)  # Fully opaque
+        display_node.SetSliceProjection(False)  # Make points visible in all slice views
+    
     def setup_bbox(self):
-        self.bbox_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsROINode")
-        self.bbox_node.SetName("BBox ROI")
-        self.bbox_node.CreateDefaultDisplayNodes()
-        bbox_dn = self.bbox_node.GetDisplayNode()
-        
-        bbox_dn.SetFillOpacity(0.)
-        bbox_dn.SetOutlineOpacity(.5)
-        bbox_dn.SetSelectedColor(0, 0, 1)
-        bbox_dn.SetColor(0, 0, 1)
-        bbox_dn.SetActiveColor(0, 0, 1)
-        bbox_dn.SetSliceProjectionColor(0, 0, 1)
-        bbox_dn.SetInteractionHandleScale(1)
-        bbox_dn.SetGlyphScale(0)
-        bbox_dn.SetHandlesInteractive(False)
-        bbox_dn.SetTextScale(0)
-
-        self.ui.bboxPlaceWidget.setMRMLScene(slicer.mrmlScene)
-        self.ui.bboxPlaceWidget.placeButton().toolTip = _("BBox Prompt")
-        self.ui.bboxPlaceWidget.buttonsVisible = False
-        self.ui.bboxPlaceWidget.placeButton().show()
-        self.ui.bboxPlaceWidget.deleteButton().hide()
-        self.ui.bboxPlaceWidget.setCurrentNode(self.bbox_node)
-        
-        self.ui.bboxPlaceWidget.placeButton().clicked.connect(self.on_interaction_bbox_clicked)
-
-        placeButton = self.ui.bboxPlaceWidget.placeButton()
-        placeButton.setText("BBox")
-        placeButton.setToolButtonStyle(qt.Qt.ToolButtonTextOnly)
-        # Optionally, remove any existing icon:
-        placeButton.setIcon(qt.QIcon())
-        placeButton.setStyleSheet("min-height: 22px; font-size: 13pt;")
-
-        placeButton = self.ui.bboxPlaceWidget.placeButton()
-
-        # 1) Make the button checkable (so it can appear "pressed"/selected)
-        placeButton.setCheckable(True)
-
-        # 2) Define a style sheet for the checked state
-        placeButton.setStyleSheet("""
-            QToolButton {
-                /* normal state: no special styling */
-                min-height: 22px;
-                font-size: 13pt;
+        self.prompt_types = {
+            "point": {
+                "node_class": "vtkMRMLMarkupsFiducialNode",
+                "node": None,
+                "name": "Point",
+                "display_node_markup_function": self.display_node_markup_point,
+                "on_placed_function": self.on_point_placed,
+                "place_widget": self.ui.pointPlaceWidget,
+            },
+            "bbox": {
+                "node_class": "vtkMRMLMarkupsROINode",
+                "node": None,
+                "name": "BBox",
+                "display_node_markup_function": self.display_node_markup_bbox,
+                "on_placed_function": self.on_bbox_placed,
+                "place_widget": self.ui.bboxPlaceWidget,
             }
-            QToolButton:checked {
-                background-color: #3498db;  /* blue */
-                color: white;
-            }
-        """)
+        }
+        
+        for prompt_name, prompt_type in self.prompt_types.items():
+            node = slicer.mrmlScene.AddNewNodeByClass(prompt_type["node_class"])
+            node.SetName("BBox ROI")
+            node.CreateDefaultDisplayNodes()
+            
+            display_node = node.GetDisplayNode()
+            prompt_type["display_node_markup_function"](display_node)
+            
+            place_widget = prompt_type["place_widget"]
+            place_widget.setMRMLScene(slicer.mrmlScene)
+            place_widget.buttonsVisible = False
+            place_widget.placeButton().show()
+            # place_widget.deleteButton().hide()
+            place_widget.setCurrentNode(node)
 
-        self.prev_caller = None        
-        self.bbox_node.AddObserver(
-            slicer.vtkMRMLMarkupsNode.PointPositionDefinedEvent,
-            self.on_roi_placed
-        )
+            place_button = place_widget.placeButton()
+            place_button.setText(prompt_type["name"])
+            place_button.setToolButtonStyle(qt.Qt.ToolButtonTextOnly)
+            
+            # place_button.setIcon(qt.QIcon())
+            place_button.setStyleSheet("min-height: 22px; font-size: 13pt;")
+
+            place_button = place_widget.placeButton()
+
+            # 1) Make the button checkable (so it can appear "pressed"/selected)
+            place_button.setCheckable(True)
+
+            # 2) Define a style sheet for the checked state
+            place_button.setStyleSheet("""
+                QToolButton {
+                    /* normal state: no special styling */
+                    min-height: 22px;
+                    font-size: 13pt;
+                }
+                QToolButton:checked {
+                    background-color: #3498db;  /* blue */
+                    color: white;
+                }
+            """)
+
+            self.prev_caller = None        
+            node.AddObserver(
+                slicer.vtkMRMLMarkupsNode.PointPositionDefinedEvent,
+                prompt_type["on_placed_function"]
+            )
+            
+            prompt_type["node"] = node
 
     def setup_markups_points(self):
         """Initialize the markups fiducial list for storing point prompts"""
         # Remove any existing points nodes first to avoid duplicates
-        for node_name in ["PromptPointsPositive", "PromptPointsNegative", "BBox ROI"]:
-            existing_points = slicer.mrmlScene.GetNodesByName(node_name)
-            if existing_points and existing_points.GetNumberOfItems() > 0:
-                for i in range(existing_points.GetNumberOfItems()):
-                    slicer.mrmlScene.RemoveNode(existing_points.GetItemAsObject(i))
+        # for node_name in ["PromptPointsPositive", "PromptPointsNegative", "BBox ROI"]:
         
-        # Create separate nodes for positive and negative points        
-        self.positive_points_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode", "PromptPointsPositive")
-        self.positive_points_node.CreateDefaultDisplayNodes()
+        if hasattr(self, 'prompt_types'):
+            for prompt_type in self.prompt_types.values():
+                # existing_points = slicer.mrmlScene.GetNodesByName(node_name)
+                existing_points = prompt_type["node"]
+                if existing_points and existing_points.GetNumberOfItems() > 0:
+                    for i in range(existing_points.GetNumberOfItems()):
+                        slicer.mrmlScene.RemoveNode(existing_points.GetItemAsObject(i))
+        self.setup_bbox()
         
-        self.negative_points_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode", "PromptPointsNegative")
-        self.negative_points_node.CreateDefaultDisplayNodes()
+        # # Create separate nodes for positive and negative points        
+        # self.positive_points_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode", "PromptPointsPositive")
+        # self.positive_points_node.CreateDefaultDisplayNodes()
         
-        # Configure display properties for positive points (green)
-        pos_display_node = self.positive_points_node.GetDisplayNode()
-        pos_display_node.SetTextScale(0)  # Hide text labels
-        pos_display_node.SetGlyphScale(0.75)  # Make the points larger
-        pos_display_node.SetColor(0.0, 1.0, 0.0)  # Green color
-        pos_display_node.SetSelectedColor(0.0, 1.0, 0.0)
-        pos_display_node.SetOpacity(1.0)  # Fully opaque
-        pos_display_node.SetSliceProjection(False)  # Make points visible in all slice views
+        # self.negative_points_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode", "PromptPointsNegative")
+        # self.negative_points_node.CreateDefaultDisplayNodes()
         
-        # Configure display properties for negative points (red)
-        neg_display_node = self.negative_points_node.GetDisplayNode()
-        neg_display_node.SetTextScale(0)  # Hide text labels
-        neg_display_node.SetGlyphScale(0.75)  # Make the points larger
-        neg_display_node.SetColor(1.0, 0.0, 0.0)  # Red color
-        neg_display_node.SetSelectedColor(1.0, 0.0, 0.0)
-        neg_display_node.SetOpacity(1.0)  # Fully opaque
-        neg_display_node.SetSliceProjection(False)  # Make points visible in all slice views
+        # # Configure display properties for positive points (green)
+        # pos_display_node = self.positive_points_node.GetDisplayNode()
+        # pos_display_node.SetTextScale(0)  # Hide text labels
+        # pos_display_node.SetGlyphScale(0.75)  # Make the points larger
+        # pos_display_node.SetColor(0.0, 1.0, 0.0)  # Green color
+        # pos_display_node.SetSelectedColor(0.0, 1.0, 0.0)
+        # pos_display_node.SetOpacity(1.0)  # Fully opaque
+        # pos_display_node.SetSliceProjection(False)  # Make points visible in all slice views
+        
+        # # Configure display properties for negative points (red)
+        # neg_display_node = self.negative_points_node.GetDisplayNode()
+        # neg_display_node.SetTextScale(0)  # Hide text labels
+        # neg_display_node.SetGlyphScale(0.75)  # Make the points larger
+        # neg_display_node.SetColor(1.0, 0.0, 0.0)  # Red color
+        # neg_display_node.SetSelectedColor(1.0, 0.0, 0.0)
+        # neg_display_node.SetOpacity(1.0)  # Fully opaque
+        # neg_display_node.SetSliceProjection(False)  # Make points visible in all slice views
 
         self.clear_points()
-        self.setup_bbox()
         
         # Setup for interactive placement
         self.is_placing_positive = False
@@ -299,7 +327,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
     def setup_shortcuts(self):
         shortcuts = {
-            "o": self.on_interaction_point_clicked,
             "t": self.toggle_prompt_type,  # Add 'T' shortcut to toggle between positive/negative
         }
         self.shortcut_items = {}
@@ -694,9 +721,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         # Track points
         self.positive_points = []
         self.negative_points = []
-        
-        # Clear the list widget
-        self.ui.pointListWidget.clear()
 
         # Empty the markup fiducial nodes in the 3D Slicer scene
         if hasattr(self, 'positive_points_node') and self.positive_points_node:
@@ -763,104 +787,27 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
         # Select the appropriate node
         if is_positive:
-            active_node = self.positive_points_node
-            point_id = len(self.positive_points) + 1
             label_prefix = "P"
             label_type = "Positive"
         else:
-            active_node = self.negative_points_node
-            point_id = len(self.negative_points) + 1
             label_prefix = "N"
             label_type = "Negative"
         
+        node = self.prompt_types["point"]
+        
         # Add the point to the node
-        n = active_node.AddControlPoint(ras_position)
-        active_node.SetNthControlPointLabel(n, f"{label_prefix}-{point_id}")
-        active_node.SetNthControlPointLocked(n, True)
-        
-        # Store the point info
-        point_info = {'id': n, 'position': ras_position}
-        if is_positive:
-            self.positive_points.append(point_info)
-        else:
-            self.negative_points.append(point_info)
-        
-        # Add to list widget
-        self.ui.pointListWidget.addItem(f"{label_prefix}-{point_id}: {label_type} at ({ras_position[0]:.1f}, {ras_position[1]:.1f}, {ras_position[2]:.1f})")
+        n = node.AddControlPoint(ras_position)
+        # node.SetNthControlPointLabel(n, f"{label_prefix}-{point_id}")
+        node.SetNthControlPointLocked(n, True)
         
         # Make sure the point is visible
-        active_node.GetDisplayNode().SetVisibility(True)
-        active_node.SetDisplayVisibility(True)
+        node.GetDisplayNode().SetVisibility(True)
+        node.SetDisplayVisibility(True)
         
         # Force scene update
         slicer.mrmlScene.Modified()
         
         print(f"Added {label_type} point at: {ras_position}")
-    
-    def start_point_placement(self):
-        """Enter point placement mode"""
-        # if self.image_changed(do_prev_image_update=False):
-        #     self.setup_markups_points()
-
-        markups_logic = slicer.modules.markups.logic()
-        
-        # Use the appropriate node based on what we're placing
-        active_node = self.positive_points_node if self.is_placing_positive else self.negative_points_node
-        markups_logic.SetActiveListID(active_node)
-        
-        # Try to enter placement mode
-        print("Starting placement mode...")
-        markups_logic.StartPlaceMode(False)
-        
-        # Make sure the input is active
-        active_node.SetLocked(False)
-        
-        # Clear any existing observers
-        for observer in self.point_placement_observers:
-            if observer[0]:
-                observer[0].RemoveObserver(observer[1])
-        self.point_placement_observers = []
-        
-        # Add observer to the active node
-        observer_id = active_node.AddObserver(slicer.vtkMRMLMarkupsNode.PointPositionDefinedEvent, 
-                                              self.on_point_placed)
-        print('added observer 623!')
-        
-        self.point_placement_observers.append((active_node, observer_id))
-        
-        # Make sure the Point button is checked and blue
-        self.ui.pbInteractionPoint.setChecked(True)
-        self.ui.pbInteractionPoint.setStyleSheet(self.selected_style)
-        
-        print("Placement mode started successfully")
-    
-    def stop_point_placement(self, reset_button=True):
-        """Exit point placement mode"""
-        print("Stopping placement mode...")
-        
-        markups_logic = slicer.modules.markups.logic()
-        markups_logic.SetActiveListID(None)
-        
-        # Clean up observers
-        for observer in self.point_placement_observers:
-            try:
-                if observer[0] and observer[1]:
-                    observer[0].RemoveObserver(observer[1])
-            except Exception as e:
-                print(f"Error removing observer: {e}")
-        self.point_placement_observers = []
-            
-        print("Removed observers")
-        
-        # Only reset the interaction point button if requested
-        if reset_button:
-            self.ui.pbInteractionPoint.setChecked(False)
-            self.ui.pbInteractionPoint.setStyleSheet(self.unselected_style)
-        
-        # Reset placement flags
-        self.is_placing_positive = False
-        self.is_placing_negative = False
-        print("Placement mode stopped")
     
     def on_point_placed(self, caller, event):
         """Called when a point is placed in the scene"""
@@ -906,9 +853,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         else:
             self.negative_points.append(point_info)
         
-        # Add to list widget
-        self.ui.pointListWidget.addItem(f"{label_prefix}-{point_id}: {label_type} at ({pos[0]:.1f}, {pos[1]:.1f}, {pos[2]:.1f})")
-        
         print(f"Added {label_type} point at: {pos}")
         
         # Make sure the point is visible in the scene
@@ -927,7 +871,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
 
             # Instead of immediately starting a new placement, use a timer with short delay
             # to ensure the current placement mode is fully complete
-            qt.QTimer.singleShot(0, self.start_point_placement)
+            qt.QTimer.singleShot(0,  self.ui.pointPlaceWidget.placeButton().click)
             print("Scheduled point placement restart with timer")
     
     def ras_to_xyz(self, pos):
@@ -948,7 +892,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
         return xyz
     
-    def on_roi_placed(self, caller, event):
+    def on_bbox_placed(self, caller, event):
         # This method will be called every time a point is defined or moved
         # For example, if you only want to print once the user has placed at least 2 corners:
         # print(event)
@@ -1005,7 +949,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
 
                 def _next():
                     self.setup_bbox()
-                    placeButton.click()
+                    qt.QTimer.singleShot(0, placeButton.click)
                 qt.QTimer.singleShot(0, _next)
             
             self.prev_caller = None
@@ -1017,10 +961,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
 
     @ensure_slicer_setup
     def on_prompt_type_positive_clicked(self, checked=False):
-        """Set the current prompt type to positive"""
-        # Save the current placement state
-        was_placing = self.is_placing_positive or self.is_placing_negative
-        
+        """Set the current prompt type to positive"""        
         # Update UI
         self.current_prompt_type_positive = True
         self.ui.pbPromptTypePositive.setStyleSheet(self.selected_style)
@@ -1028,15 +969,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.ui.pbPromptTypePositive.setChecked(True)
         self.ui.pbPromptTypeNegative.setChecked(False)
         print("Prompt type set to POSITIVE")
-        
-        # If we were already in placement mode, switch to positive placement
-        if was_placing:
-            # Stop current placement
-            self.stop_point_placement(reset_button=False)
-            # Start new placement with positive
-            self.is_placing_positive = True
-            self.is_placing_negative = False
-            self.start_point_placement()
     
     @ensure_slicer_setup
     def toggle_prompt_type(self, checked=False):
@@ -1050,8 +982,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     @ensure_slicer_setup
     def on_prompt_type_negative_clicked(self, checked=False):
         """Set the current prompt type to negative"""
-        # Save the current placement state
-        was_placing = self.is_placing_positive or self.is_placing_negative
         
         # Update UI
         self.current_prompt_type_positive = False
@@ -1060,50 +990,3 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.ui.pbPromptTypePositive.setChecked(False)
         self.ui.pbPromptTypeNegative.setChecked(True)
         print("Prompt type set to NEGATIVE")
-        
-        # If we were already in placement mode, switch to negative placement
-        if was_placing:
-            # Stop current placement
-            self.stop_point_placement(reset_button=False)
-            # Start new placement with negative
-            self.is_placing_positive = False
-            self.is_placing_negative = True
-            self.start_point_placement()
-
-    @ensure_slicer_setup
-    def on_interaction_point_clicked(self, checked=False):
-        """Start interactive placement of a point based on the current prompt type"""
-        print("Calling on_interaction_point_clicked")
-        if self.interaction_tool_mode != 'point':
-            self.interaction_tool_mode = 'point'
-
-            self.ui.pbInteractionPoint.setStyleSheet(self.selected_style)
-            
-            # If already in placement mode, stop it first
-            if self.is_placing_positive or self.is_placing_negative:
-                print('already in placement mode, stop it first')
-                self.stop_point_placement(reset_button=False)
-            
-            # Enter point placement mode based on current prompt type
-            if self.current_prompt_type_positive:
-                print("Starting positive point placement - click in the view to place")
-                self.is_placing_positive = True
-            else:
-                print("Starting negative point placement - click in the view to place")
-                self.is_placing_negative = True
-                
-            self.start_point_placement()
-        else:
-            self.interaction_tool_mode = None
-
-            # Reset style if unchecked
-            self.ui.pbInteractionPoint.setStyleSheet(self.unselected_style)
-            self.stop_point_placement(reset_button=True)
-
-    @ensure_slicer_setup
-    def on_interaction_bbox_clicked(self, checked=False):
-        print('checked:', checked)
-        
-        if checked:
-            self.ui.pbInteractionPoint.setStyleSheet(self.unselected_style)
-        
