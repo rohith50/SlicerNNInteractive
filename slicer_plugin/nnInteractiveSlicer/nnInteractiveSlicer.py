@@ -35,7 +35,7 @@ def ensure_synched(func):
             
             if self.selected_segment_changed():
                 print("Segment changed (or not previously set). Calling sync_segment_with_server()")
-                self.clear_all_but_last_point()
+                # self.clear_all_but_last_point()
                 self.upload_segment_to_server()
             else:
                 print("Segment did not change!")
@@ -222,9 +222,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
 
     def setup_markups_points(self):
         """Initialize the markups fiducial list for storing point prompts"""
-        # Remove any existing points nodes first to avoid duplicates
-        # for node_name in ["PromptPointsPositive", "PromptPointsNegative", "BBox ROI"]:
-        
         if hasattr(self, 'prompt_types'):
             for prompt_type in self.prompt_types.values():
                 # existing_points = slicer.mrmlScene.GetNodesByName(node_name)
@@ -233,41 +230,11 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                     for i in range(existing_points.GetNumberOfItems()):
                         slicer.mrmlScene.RemoveNode(existing_points.GetItemAsObject(i))
         self.setup_bbox()
-        
-        # # Create separate nodes for positive and negative points        
-        # self.positive_points_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode", "PromptPointsPositive")
-        # self.positive_points_node.CreateDefaultDisplayNodes()
-        
-        # self.negative_points_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode", "PromptPointsNegative")
-        # self.negative_points_node.CreateDefaultDisplayNodes()
-        
-        # # Configure display properties for positive points (green)
-        # pos_display_node = self.positive_points_node.GetDisplayNode()
-        # pos_display_node.SetTextScale(0)  # Hide text labels
-        # pos_display_node.SetGlyphScale(0.75)  # Make the points larger
-        # pos_display_node.SetColor(0.0, 1.0, 0.0)  # Green color
-        # pos_display_node.SetSelectedColor(0.0, 1.0, 0.0)
-        # pos_display_node.SetOpacity(1.0)  # Fully opaque
-        # pos_display_node.SetSliceProjection(False)  # Make points visible in all slice views
-        
-        # # Configure display properties for negative points (red)
-        # neg_display_node = self.negative_points_node.GetDisplayNode()
-        # neg_display_node.SetTextScale(0)  # Hide text labels
-        # neg_display_node.SetGlyphScale(0.75)  # Make the points larger
-        # neg_display_node.SetColor(1.0, 0.0, 0.0)  # Red color
-        # neg_display_node.SetSelectedColor(1.0, 0.0, 0.0)
-        # neg_display_node.SetOpacity(1.0)  # Fully opaque
-        # neg_display_node.SetSliceProjection(False)  # Make points visible in all slice views
-
         self.clear_points()
         
         # Setup for interactive placement
         self.is_placing_positive = False
         self.is_placing_negative = False
-        self.point_placement_observers = []
-        
-        # Flag to track if we've shown the placement mode warning
-        self.shown_placement_warning = False
     
     def install_dependencies(self):
         dependencies = {
@@ -768,19 +735,12 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     def add_point_to_markup(self, ras_position, is_positive=True):
         """Add a point to the appropriate markup fiducial node"""
         
-        # Select the appropriate node
-        if is_positive:
-            label_prefix = "P"
-            label_type = "Positive"
-        else:
-            label_prefix = "N"
-            label_type = "Negative"
+        # TODO: determine +ve/-ve and set color
         
         node = self.prompt_types["point"]
         
         # Add the point to the node
         n = node.AddControlPoint(ras_position)
-        # node.SetNthControlPointLabel(n, f"{label_prefix}-{point_id}")
         node.SetNthControlPointLocked(n, True)
         
         # Make sure the point is visible
@@ -790,7 +750,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         # Force scene update
         slicer.mrmlScene.Modified()
         
-        print(f"Added {label_type} point at: {ras_position}")
+        print(f"Added point at: {ras_position}")
     
     def on_point_placed(self, caller, event):
         """Called when a point is placed in the scene"""
