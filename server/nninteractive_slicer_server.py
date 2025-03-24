@@ -112,6 +112,11 @@ class PromptManager:
         self.session.add_bbox_interaction(bbox, include_interaction=include_interaction)
         
         return self.target_tensor.clone().cpu().detach().numpy()
+    
+    def add_lasso_interaction(self, mask, include_interaction):
+        print("Lasso mask received with shape:", mask.shape)
+        self.session.add_lasso_interaction(mask, include_interaction=include_interaction)
+        return self.target_tensor.clone().cpu().detach().numpy()
 
 
 PROMPT_MANAGER = PromptManager()
@@ -161,21 +166,6 @@ async def upload_segment(
     PROMPT_MANAGER.set_segment(arr)
     
     return {"status": "ok"}
-
-
-
-# @app.post("/set_mask")
-# async def set_mask(file: UploadFile = File(...)):
-#     print('doing mask prompt!')
-#     # Read the binary data
-#     binary_data = await file.read()
-
-#     vol_shape = PROMPT_MANAGER.target_tensor.shape
-
-#     mask_prompt = unpack_binary_segmentation(gzip.decompress(binary_data),
-#                                              vol_shape=vol_shape)
-
-#     PROMPT_MANAGER.target_tensor = torch.from_numpy(mask_prompt).astype(torch.uint8)
     
     
 @app.post("/print_hello")
@@ -252,6 +242,43 @@ async def add_bbox_interaction(params: BBoxParams):
     
     # Return as binary data with appropriate content type
     return Response(content=segmentation_binary_data, media_type="application/octet-stream", headers={"Content-Encoding": "gzip"})
+
+
+@app.post("/add_lasso_interaction")
+async def add_lasso_interaction(
+    file: UploadFile = File(...),
+    positive_click: str = Form(...)
+):
+    # Convert the form string to a boolean.
+    positive_click_bool = positive_click.lower() in ["true", "1", "yes"]
+    t = time.time()
+    
+    if PROMPT_MANAGER.img is None:
+        warnings.warn('There is no image in the server. Be sure to send it before')
+        return {"status": "error", "message": "No image uploaded"}
+    
+    # Read the uploaded file bytes and decompress.
+    file_bytes = await file.read()
+    try:
+        decompressed = gzip.decompress(file_bytes)
+    except Exception as e:
+        return {"status": "error", "message": f"Decompression failed: {e}"}
+    
+    # Load the numpy mask.
+    mask = np.load(io.BytesIO(decompressed))
+    
+    # Process the lasso interaction.
+    seg_result = PROMPT_MANAGER.add_lasso_interaction(mask, include_interaction=positive_click_bool)
+    
+    # Convert the segmentation result to compressed binary data.
+    segmentation_binary_data = segmentation_binary(seg_result, compress=True)
+    print(f'Server whole infer function time: {time.time() - t}')
+    
+    return Response(
+        content=segmentation_binary_data,
+        media_type="application/octet-stream",
+        headers={"Content-Encoding": "gzip"}
+    )
 
     
 def unpack_binary_segmentation(binary_data, vol_shape):

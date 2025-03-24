@@ -20,6 +20,8 @@ import copy
 import importlib.util
 import time
 
+from skimage.draw import polygon
+
 
 def ensure_synched(func):
     def inner(self, *args, **kwargs):
@@ -94,6 +96,15 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                 "display_node_markup_function": self.display_node_markup_bbox,
                 "on_placed_function": self.on_bbox_placed,
                 "place_widget": self.ui.bboxPlaceWidget,
+            },
+            "lasso": {
+                "node_class": "vtkMRMLMarkupsClosedCurveNode",
+                "node": None,
+                "name": "LassoPrompt",
+                "button_text": "Lasso",
+                "display_node_markup_function": self.display_node_markup_lasso,
+                "on_placed_function": None,
+                "place_widget": self.ui.lassoPlaceWidget,
             }
         }
         
@@ -137,6 +148,9 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.ui.pbPromptTypeNegative.clicked.connect(self.on_prompt_type_negative_clicked)
         
         self.interaction_tool_mode = None
+        
+    def display_node_markup_lasso(self, display_node):
+        return
     
     def display_node_markup_bbox(self, display_node):
         display_node.SetFillOpacity(0.)
@@ -200,28 +214,12 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             """)
 
             self.prev_caller = None        
-            node.AddObserver(
-                slicer.vtkMRMLMarkupsNode.PointPositionDefinedEvent,
-                prompt_type["on_placed_function"]
-            )      
-            self.just_added = True
-            # node.AddObserver(
-            #     slicer.vtkMRMLMarkupsNode.PointAddedEvent,
-            #     self.point_added_in_view
-            # )
             
+            if prompt_type["on_placed_function"] is not None:
+                node.AddObserver(slicer.vtkMRMLMarkupsNode.PointPositionDefinedEvent, 
+                                 prompt_type["on_placed_function"])      
+                
             prompt_type["node"] = node
-            
-    def point_added_in_view(self, caller, event):
-        print('point_added_in_view')
-        if not self.selected_segment_changed():
-            print('not changed')
-            return
-        
-        print('did change')
-        if not self.just_added:
-            self.setup_prompts()
-        self.just_added = False
 
     def remove_prompt_nodes(self):
         for prompt_type in self.prompt_types.values():
@@ -246,10 +244,11 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                         last_modified_node = node
         
         for node in all_nodes:
-            # if node == last_modified_node:
             n = node.GetNumberOfControlPoints()
             
             if node == last_modified_node:
+                if node.GetName() == "LassoPrompt":
+                    continue
                 n -= 1
             
             for i in range(n):
@@ -324,6 +323,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
     def setup_shortcuts(self):
         shortcuts = {
+            "return": self.submit_lasso_if_present,
             "t": self.toggle_prompt_type,  # Add 'T' shortcut to toggle between positive/negative
         }
         self.shortcut_items = {}
@@ -505,25 +505,23 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         except Exception as e:
             print("Error in upload_image_to_server:", e)
 
+    def mask_to_np_upload_file(self, mask):
+        buffer = io.BytesIO()
+        np.save(buffer, mask)
+        compressed_data = gzip.compress(buffer.getvalue())
+        
+        files = {
+            'file': ('volume.npy.gz', compressed_data, 'application/octet-stream')
+        }
+        
+        return files
+
     def upload_segment_to_server(self):
         print("Syncing segment with server...")
+        # return
         try:
-            t0 = time.time()
             segment_data = self.get_segment_data()
-            print('self.segment_data() took', time.time() - t0)
-            
-            t0 = time.time()
-            
-            buffer = io.BytesIO()
-            np.save(buffer, segment_data)
-            compressed_data = gzip.compress(buffer.getvalue())
-            print('len(compressed_data):', len(compressed_data))
-            
-            files = {
-                'file': ('volume.npy.gz', compressed_data, 'application/octet-stream')
-            }
-
-            print("Uploading payload to server...")
+            files = self.mask_to_np_upload_file(segment_data)
             url = f"{self.server}/upload_segment"  # Update this with your actual endpoint.
             
             t0 = time.time()
@@ -571,6 +569,48 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         print('np.sum(unpacked_segmentation):', np.sum(unpacked_segmentation))
         self.show_segmentation(unpacked_segmentation)
     
+    @ensure_synched
+    def lasso_prompt(self, mask, positive_click=False):
+        url = f"{self.server}/add_lasso_interaction"
+        print(url)
+        # return
+        try:
+            # files = self.mask_to_np_upload_file(mask)
+            
+            # t0 = time.time()
+            # seg_response = requests.post(
+            #     url,
+            #     files=files,
+            #     json={'positive_click': positive_click},
+            #     headers={"Content-Encoding": "gzip"}
+            # )
+            # print('Response took', time.time() - t0)
+            
+            buffer = io.BytesIO()
+            np.save(buffer, mask)
+            compressed_data = gzip.compress(buffer.getvalue())
+            
+            from requests_toolbelt import MultipartEncoder
+
+            fields = {
+                'file': ('volume.npy.gz', compressed_data, 'application/octet-stream'),
+                'positive_click': str(positive_click)  # Make sure to send it as a string.
+            }
+            encoder = MultipartEncoder(fields=fields)
+            seg_response = requests.post(
+                url,
+                data=encoder,
+                headers={"Content-Type": encoder.content_type, "Content-Encoding": "gzip"}
+            )
+            
+            if seg_response.status_code == 200:
+                unpacked_segmentation = self.unpack_binary_segmentation(seg_response.content, decompress=False)
+                print('np.sum(unpacked_segmentation):', np.sum(unpacked_segmentation))
+                self.show_segmentation(unpacked_segmentation)
+            else:
+                print("Lasso prompt upload failed with status code:", seg_response.status_code)
+        except Exception as e:
+            print("Error in lasso_prompt:", e)
     
     def unpack_binary_segmentation(self, binary_data, decompress=False):
         """
@@ -723,27 +763,29 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         volumeRasToIjk.MultiplyPoint(list(point_VolumeRas) + [1.0], point_Ijk)
         xyz = [int(round(c)) for c in point_Ijk[0:3]]
         
-        print(f"Converted point to voxel coordinates: {xyz}")
-        
         return xyz
     
-    def xyz_from_caller(self, caller, lock_point=True):
+    def xyz_from_caller(self, caller, lock_point=True, return_all=False):
         n = caller.GetNumberOfControlPoints() - 1
         if n < 0:
             print("No control points found")
             return
-            
-        # Get the position
-        pos = [0, 0, 0]
-        caller.GetNthControlPointPosition(n, pos)
         
-        if lock_point:
-            # Lock the point to prevent movement
-            caller.SetNthControlPointLocked(n, True)
+        xyzs = []
+        ids = range(n) if return_all else [n]
         
-        xyz = self.ras_to_xyz(pos)
+        for i in ids:
+            pos = [0, 0, 0]
+            caller.GetNthControlPointPosition(i, pos)
+            if lock_point:
+                caller.SetNthControlPointLocked(i, True)
+            xyz = self.ras_to_xyz(pos)
+            xyzs.append(xyz)
         
-        return xyz
+        if not return_all:
+            return xyzs[0]
+        
+        return xyzs
     
     @property
     def is_positive(self):
@@ -754,8 +796,8 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         # Determine which node called this (positive or negative)
         xyz = self.xyz_from_caller(caller)
         
-        volumeNode = self.get_volume_node()
-        if volumeNode:
+        volume_node = self.get_volume_node()
+        if volume_node:
             
             # Call point_prompt with the voxel coordinates
             self.point_prompt(xyz=xyz, positive_click=self.is_positive)
@@ -779,8 +821,8 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             current_size[drawn_in_axis] = 0 
             roi_node.SetSize(current_size)
             
-            volumeNode = self.get_volume_node()
-            if volumeNode:                
+            volume_node = self.get_volume_node()
+            if volume_node:                
                 outer_point_two=self.prev_bbox_xyz
                 
                 outer_point_one = [xyz[0] * 2 - outer_point_two[0],
@@ -802,6 +844,84 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             self.prev_bbox_xyz = xyz
 
         self.prev_caller = caller
+
+    def lasso_points_to_mask(self, points):
+        shape = self.get_image_data().shape
+        pts = np.array(points)  # shape (n, 3)
+        
+        # Determine which coordinate is constant
+        const_axes = [i for i in range(3) if np.unique(pts[:, i]).size == 1]
+        if len(const_axes) != 1:
+            raise ValueError("Expected exactly one constant coordinate among the points")
+        const_axis = const_axes[0]
+        const_val = int(pts[0, const_axis])
+        
+        # Create a blank 3D mask
+        mask = np.zeros(shape, dtype=np.uint8)
+        
+        # Depending on which axis is constant, extract the 2D polygon and fill the corresponding slice.
+        # Note: our volume is ordered as (z, y, x)
+        if const_axis == 2:
+            x_coords = pts[:, 0]
+            y_coords = pts[:, 1]
+            rr, cc = polygon(y_coords, x_coords, shape=(shape[1], shape[2]))
+            mask[const_val, rr, cc] = 1
+        elif const_axis == 1:
+            x_coords = pts[:, 0]
+            z_coords = pts[:, 2]
+            rr, cc = polygon(z_coords, x_coords, shape=(shape[0], shape[2]))
+            mask[rr, const_val, cc] = 1
+        elif const_axis == 0:
+            y_coords = pts[:, 1]
+            z_coords = pts[:, 2]
+            rr, cc = polygon(z_coords, y_coords, shape=(shape[0], shape[1]))
+            mask[rr, cc, const_val] = 1
+            
+        return mask
+
+    def on_lasso_finished(self, caller, event):
+        return
+        print('Lasso finished!')
+        xyzs = self.xyz_from_caller(caller, return_all=True)
+        mask = self.lasso_points_to_mask(xyzs)
+        
+        print('xyzs:', xyzs)
+        print('mask.shape:', mask.shape)
+        print('np.sum(mask):', np.sum(mask))
+        
+        volume_node = self.get_volume_node()
+        if volume_node:
+            self.lasso_prompt(mask=mask, positive_click=self.is_positive)
+
+            def _next():
+                self.setup_prompts()
+                qt.QTimer.singleShot(0, self.ui.lassoPlaceWidget.placeButton().click)
+            
+            print("Scheduled point placement restart with timer")
+            qt.QTimer.singleShot(0, _next)
+        return
+
+    def submit_lasso_if_present(self):
+        caller = self.prompt_types["lasso"]["node"]            
+        
+        print('Lasso finished!')
+        xyzs = self.xyz_from_caller(caller, return_all=True)
+        mask = self.lasso_points_to_mask(xyzs)
+        
+        print('xyzs:', xyzs)
+        print('mask.shape:', mask.shape)
+        print('np.sum(mask):', np.sum(mask))
+        
+        volume_node = self.get_volume_node()
+        if volume_node:
+            self.lasso_prompt(mask=mask, positive_click=self.is_positive)
+
+            def _next():
+                self.setup_prompts()
+                qt.QTimer.singleShot(0, self.ui.lassoPlaceWidget.placeButton().click)
+            
+            print("Scheduled point placement restart with timer")
+            qt.QTimer.singleShot(0, _next)
 
     def on_prompt_type_positive_clicked(self, checked=False):
         """Set the current prompt type to positive"""        
