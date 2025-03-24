@@ -103,7 +103,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                 "name": "LassoPrompt",
                 "button_text": "Lasso",
                 "display_node_markup_function": self.display_node_markup_lasso,
-                "on_placed_function": None,
+                "on_placed_function": self.on_lasso_placed,
                 "place_widget": self.ui.lassoPlaceWidget,
             }
         }
@@ -147,10 +147,21 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.ui.pbPromptTypePositive.clicked.connect(self.on_prompt_type_positive_clicked)
         self.ui.pbPromptTypeNegative.clicked.connect(self.on_prompt_type_negative_clicked)
         
+        self.prompt_types["lasso"]["place_widget"].placeButton().clicked.connect(self.on_lasso_clicked)
+        
         self.interaction_tool_mode = None
         
     def display_node_markup_lasso(self, display_node):
-        return
+        display_node.SetFillOpacity(0.)
+        display_node.SetOutlineOpacity(.5)
+        display_node.SetSelectedColor(0, 0, 1)
+        display_node.SetColor(0, 0, 1)
+        display_node.SetActiveColor(0, 0, 1)
+        display_node.SetSliceProjectionColor(0, 0, 1)
+        display_node.SetGlyphScale(2)
+        display_node.SetLineThickness(.3)
+        display_node.SetHandlesInteractive(False)
+        display_node.SetTextScale(0)
     
     def display_node_markup_bbox(self, display_node):
         display_node.SetFillOpacity(0.)
@@ -844,6 +855,15 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             self.prev_bbox_xyz = xyz
 
         self.prev_caller = caller
+        
+    def on_lasso_placed(self, caller, event):
+        self.ui.lassoPlaceWidget.placeButton().setText("Lasso [Hit Enter to finish]")
+        
+    def on_lasso_clicked(self, checked=False):
+        if checked:
+            self.ui.lassoPlaceWidget.placeButton().setText("Lasso [Hit Enter to finish]")
+        else:
+            self.ui.lassoPlaceWidget.placeButton().setText(self.prompt_types["lasso"]["button_text"])
 
     def lasso_points_to_mask(self, points):
         shape = self.get_image_data().shape
@@ -879,28 +899,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             
         return mask
 
-    def on_lasso_finished(self, caller, event):
-        return
-        print('Lasso finished!')
-        xyzs = self.xyz_from_caller(caller, return_all=True)
-        mask = self.lasso_points_to_mask(xyzs)
-        
-        print('xyzs:', xyzs)
-        print('mask.shape:', mask.shape)
-        print('np.sum(mask):', np.sum(mask))
-        
-        volume_node = self.get_volume_node()
-        if volume_node:
-            self.lasso_prompt(mask=mask, positive_click=self.is_positive)
-
-            def _next():
-                self.setup_prompts()
-                qt.QTimer.singleShot(0, self.ui.lassoPlaceWidget.placeButton().click)
-            
-            print("Scheduled point placement restart with timer")
-            qt.QTimer.singleShot(0, _next)
-        return
-
     def submit_lasso_if_present(self):
         caller = self.prompt_types["lasso"]["node"]            
         
@@ -919,6 +917,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             def _next():
                 self.setup_prompts()
                 qt.QTimer.singleShot(0, self.ui.lassoPlaceWidget.placeButton().click)
+                self.ui.lassoPlaceWidget.placeButton().setText(self.prompt_types["lasso"]["button_text"])
             
             print("Scheduled point placement restart with timer")
             qt.QTimer.singleShot(0, _next)
