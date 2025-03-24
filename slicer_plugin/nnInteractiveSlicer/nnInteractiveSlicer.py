@@ -280,6 +280,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         dependencies = {
             'xxhash': 'xxhash==3.5.0',
             'requests_toolbelt': 'requests_toolbelt==1.0.0',
+            'SimpleITK': 'SimpleITK==2.3.1'
         }
 
         for dependency in dependencies:
@@ -584,18 +585,10 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     def lasso_prompt(self, mask, positive_click=False):
         url = f"{self.server}/add_lasso_interaction"
         print(url)
-        # return
         try:
-            # files = self.mask_to_np_upload_file(mask)
-            
-            # t0 = time.time()
-            # seg_response = requests.post(
-            #     url,
-            #     files=files,
-            #     json={'positive_click': positive_click},
-            #     headers={"Content-Encoding": "gzip"}
-            # )
-            # print('Response took', time.time() - t0)
+            import SimpleITK as sitk
+            sim = sitk.GetImageFromArray(mask)
+            sitk.WriteImage(sim, '/Users/coendevente/Desktop/a.nii.gz')
             
             buffer = io.BytesIO()
             np.save(buffer, mask)
@@ -777,13 +770,13 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         return xyz
     
     def xyz_from_caller(self, caller, lock_point=True, return_all=False):
-        n = caller.GetNumberOfControlPoints() - 1
+        n = caller.GetNumberOfControlPoints()
         if n < 0:
             print("No control points found")
             return
         
         xyzs = []
-        ids = range(n) if return_all else [n]
+        ids = range(n) if return_all else [n - 1]
         
         for i in ids:
             pos = [0, 0, 0]
