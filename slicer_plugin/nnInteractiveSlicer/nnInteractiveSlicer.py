@@ -744,19 +744,21 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         xyz = self.ras_to_xyz(pos)
         
         return xyz
-        
+    
+    @property
+    def is_positive(self):
+        return self.ui.pbPromptTypePositive.isChecked()
     
     def on_point_placed(self, caller, event):
         """Called when a point is placed in the scene"""        
         # Determine which node called this (positive or negative)
-        is_positive = self.ui.pbPromptTypePositive.isChecked()
         xyz = self.xyz_from_caller(caller)
         
         volumeNode = self.get_volume_node()
         if volumeNode:
             
             # Call point_prompt with the voxel coordinates
-            self.point_prompt(xyz=xyz, positive_click=is_positive)
+            self.point_prompt(xyz=xyz, positive_click=self.is_positive)
 
             qt.QTimer.singleShot(0, self.ui.pointPlaceWidget.placeButton().click)
             print("Scheduled point placement restart with timer")
@@ -769,17 +771,17 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         if self.prev_caller is not None and caller.GetID() == self.prev_caller.GetID():
             print("placed!")
             
-            print(xyz, self.prev_roi_xyz)
+            print(xyz, self.prev_bbox_xyz)
             
-            roiNode = slicer.mrmlScene.GetNodeByID(caller.GetID())
-            currentSize = list(roiNode.GetSize())
-            drawn_in_axis = np.argwhere(np.array(xyz) == self.prev_roi_xyz).squeeze()
-            currentSize[drawn_in_axis] = 0 
-            roiNode.SetSize(currentSize)
+            roi_node = slicer.mrmlScene.GetNodeByID(caller.GetID())
+            current_size = list(roi_node.GetSize())
+            drawn_in_axis = np.argwhere(np.array(xyz) == self.prev_bbox_xyz).squeeze()
+            current_size[drawn_in_axis] = 0 
+            roi_node.SetSize(current_size)
             
             volumeNode = self.get_volume_node()
             if volumeNode:                
-                outer_point_two=self.prev_roi_xyz
+                outer_point_two=self.prev_bbox_xyz
                 
                 outer_point_one = [xyz[0] * 2 - outer_point_two[0],
                                    xyz[1] * 2 - outer_point_two[1],
@@ -788,7 +790,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                 
                 self.bbox_prompt(outer_point_one=outer_point_one, 
                                  outer_point_two=outer_point_two, 
-                                 positive_click=self.ui.pbPromptTypePositive.isChecked())
+                                 positive_click=self.is_positive)
 
                 def _next():
                     self.setup_prompts()
@@ -797,7 +799,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             
             self.prev_caller = None
         else:
-            self.prev_roi_xyz = xyz
+            self.prev_bbox_xyz = xyz
 
         self.prev_caller = caller
 
