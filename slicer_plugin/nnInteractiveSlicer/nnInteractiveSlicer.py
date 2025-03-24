@@ -727,11 +727,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
         return xyz
     
-    def on_point_placed(self, caller, event):
-        """Called when a point is placed in the scene"""        
-        # Determine which node called this (positive or negative)
-        is_positive = self.ui.pbPromptTypePositive.isChecked()
-            
+    def xyz_from_caller(self, caller, lock_point=True):
         n = caller.GetNumberOfControlPoints() - 1
         if n < 0:
             print("No control points found")
@@ -741,28 +737,34 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         pos = [0, 0, 0]
         caller.GetNthControlPointPosition(n, pos)
         
-        # Lock the point to prevent movement
-        caller.SetNthControlPointLocked(n, True)
+        if lock_point:
+            # Lock the point to prevent movement
+            caller.SetNthControlPointLocked(n, True)
+        
+        xyz = self.ras_to_xyz(pos)
+        
+        return xyz
+        
+    
+    def on_point_placed(self, caller, event):
+        """Called when a point is placed in the scene"""        
+        # Determine which node called this (positive or negative)
+        is_positive = self.ui.pbPromptTypePositive.isChecked()
+        xyz = self.xyz_from_caller(caller)
         
         volumeNode = self.get_volume_node()
         if volumeNode:
-            xyz = self.ras_to_xyz(pos)
             
             # Call point_prompt with the voxel coordinates
             self.point_prompt(xyz=xyz, positive_click=is_positive)
 
-            # Instead of immediately starting a new placement, use a timer with short delay
-            # to ensure the current placement mode is fully complete
-            qt.QTimer.singleShot(0,  self.ui.pointPlaceWidget.placeButton().click)
+            qt.QTimer.singleShot(0, self.ui.pointPlaceWidget.placeButton().click)
             print("Scheduled point placement restart with timer")
     
     def on_bbox_placed(self, caller, event):
         # This method will be called every time a point is defined or moved
         placeButton = self.ui.bboxPlaceWidget.placeButton()
-        
-        pos = [0, 0, 0]
-        caller.GetNthControlPointPosition(0, pos)
-        xyz = self.ras_to_xyz(pos)
+        xyz = self.xyz_from_caller(caller)
 
         if self.prev_caller is not None and caller.GetID() == self.prev_caller.GetID():
             print("placed!")
