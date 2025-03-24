@@ -23,12 +23,7 @@ import time
 
 def ensure_synched(func):
     def inner(self, *args, **kwargs):
-        try:                
-            if getattr(self, "_sync_in_progress", False):
-                print("Sync already in progress; skipping checksum computation.")
-                return
-            self._sync_in_progress = True
-
+        try:
             if self.image_changed():
                 print("Image changed (or not previously set). Calling upload_segment_to_server()")
                 self.upload_image_to_server()
@@ -44,22 +39,9 @@ def ensure_synched(func):
                 
         except Exception as e:
             print("Error in ensure_synched:", e)
-        finally:
-            self._sync_in_progress = False
-            
+        finally:            
             return func(self, *args, **kwargs)
     return inner
-
-
-# def ensure_slicer_setup(func):
-#     def inner(self, *args, **kwargs):
-#         if slicer.mrmlScene.GetNodesByName("PromptPointsPositive").GetNumberOfItems() == 0:
-#             self.previous_states = {}
-#             self.setup_markups_points()
-#             self.setup_shortcuts()
-
-#         return func(self, *args, **kwargs)
-#     return inner
 
 
 #
@@ -120,7 +102,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
         _ = self.get_current_segment_id()
         self.previous_states = {}
-        self._sync_in_progress = False
 
     def update_server(self):
         # Get the updated server URL from the UI
@@ -177,7 +158,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         display_node.SetOpacity(1.0)  # Fully opaque
         display_node.SetSliceProjection(False)  # Make points visible in all slice views
     
-    def setup_bbox(self):        
+    def setup_prompts(self):        
         for prompt_name, prompt_type in self.prompt_types.items():
             node = slicer.mrmlScene.AddNewNodeByClass(prompt_type["node_class"])
             node.SetName(prompt_type["name"])
@@ -238,13 +219,9 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             return
         
         print('did change')
-        # print('234 caller:', caller)
-        # self.clear_points(do_setup=False)
-        # print('235 caller:', caller)
         if not self.just_added:
-            self.setup_bbox()
+            self.setup_prompts()
         self.just_added = False
-        # self.prompt_types["point"]["node"].CreateDefaultDisplayNodes()
 
     def remove_prompt_nodes(self):
         for prompt_type in self.prompt_types.values():
@@ -264,14 +241,10 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                 for i in range(existing_nodes.GetNumberOfItems()):
                     node = existing_nodes.GetItemAsObject(i)
                     
-                    # if not skip_last:
-                    #     slicer.mrmlScene.RemoveNode(node)
-                    # else:
                     all_nodes.append(node)
                     if last_modified_node is None or node.GetMTime() > last_modified_node.GetMTime():
                         last_modified_node = node
         
-        # if skip_last:
         for node in all_nodes:
             # if node == last_modified_node:
             n = node.GetNumberOfControlPoints()
@@ -281,31 +254,13 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             
             for i in range(n):
                 node.RemoveNthControlPoint(0)
-            # else:
-            #     slicer.mrmlScene.RemoveNode(node)
-        # node.GetNthControlPointID(j)
-        # prompt_nodes.append(
-        #     {"node": node, "id": j, "mtime": node.GetMTime()}
-        # )
-        # a.RemoveNthControlPoint(0)
-        
-        # print('len(prompt_nodes):', len(prompt_nodes))
-        
-        # prompt_nodes = sorted(prompt_nodes, key=lambda node: node.GetMTime())
-        # if skip_last_n > 0:
-        #     prompt_nodes = prompt_nodes[:-skip_last_n]
-        
-        # for prompt_node in prompt_nodes:
-        #     print('Removing:', prompt_node)
-        #     slicer.mrmlScene.RemoveNode(prompt_node)
         
 
     def setup_markups_points(self):
         """Initialize the markups fiducial list for storing point prompts"""
         self.remove_prompt_nodes()
         
-        self.setup_bbox()
-        self.clear_points()
+        self.setup_prompts()
         
         # Setup for interactive placement
         self.is_placing_positive = False
@@ -512,11 +467,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             slicer.progress_window.minimum = 0
             slicer.progress_window.maximum = 100
             slicer.progress_window.setLabelText("Uploading image...")
-            # slicer.app.processEvents()
-
-            # self.ui.uploadProgressBar.update()
-            # self.ui.uploadProgressBar.setValue(0)
-            # self.ui.uploadProgressBar.update()
 
             def my_callback(monitor):
                 if not hasattr(monitor, 'last_update'):
@@ -759,145 +709,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         # pass
         self.remove_shortcut_items()
     
-    def clear_points(self, do_setup=True):
-        # Track points
-        self.positive_points = []
-        self.negative_points = []
-
-        # # Empty the markup fiducial nodes in the 3D Slicer scene
-        # if hasattr(self, 'positive_points_node') and self.positive_points_node:
-        #     self.positive_points_node.RemoveAllControlPoints()
-        
-        if hasattr(self, 'prompt_types'):
-            for prompt_type in self.prompt_types.values():
-                prompt_type["node"].RemoveAllControlPoints()
-                # pass
-        
-        if do_setup:
-            self.setup_bbox()
-            
-        # Force scene update
-        slicer.mrmlScene.Modified()
-
-    def clear_all_but_last_point(self):
-        # 1. Get location of last point and whether it's positive or negative
-        last_positive = None
-        last_negative = None
-        
-        if self.positive_points:
-            last_positive = self.positive_points[-1]
-            
-        if self.negative_points:
-            last_negative = self.negative_points[-1]
-            
-        # Determine which is the most recent point
-        if last_positive and last_negative:
-            # Compare the IDs to determine which was added last
-            is_positive = last_positive['id'] > last_negative['id']
-            last_point = last_positive if is_positive else last_negative
-        elif last_positive:
-            is_positive = True
-            last_point = last_positive
-        elif last_negative:
-            is_positive = False
-            last_point = last_negative
-        else:
-            # No points to preserve
-            print('No points to preserve')
-            return
-            
-        # 2. Clear all points
-        self.clear_points()
-        
-        # 3. Add that last point back
-        print(f'Adding point {last_point}')
-        self.add_point_to_markup(last_point['position'], is_positive=is_positive)
-        
-    def add_point_to_markup(self, ras_position, is_positive=True):
-        """Add a point to the appropriate markup fiducial node"""
-        
-        # TODO: determine +ve/-ve and set color
-        
-        node = self.prompt_types["point"]
-        
-        # Add the point to the node
-        n = node.AddControlPoint(ras_position)
-        node.SetNthControlPointLocked(n, True)
-        
-        # Make sure the point is visible
-        node.GetDisplayNode().SetVisibility(True)
-        node.SetDisplayVisibility(True)
-        
-        # Force scene update
-        slicer.mrmlScene.Modified()
-        
-        print(f"Added point at: {ras_position}")
-    
-    def on_point_placed(self, caller, event):
-        """Called when a point is placed in the scene"""
-        # Add debug information to help diagnose issues
-        print(f"on_point_placed called with event: {event}")
-
-        if self._sync_in_progress:
-            print("_sync_in_progress is True, so skipping on_point_placed...")
-            return
-        
-        # Determine which node called this (positive or negative)
-        active_node = caller
-        is_positive = self.ui.pbPromptTypePositive.isChecked()
-            
-        n = active_node.GetNumberOfControlPoints() - 1
-        if n < 0:
-            print("No control points found")
-            return
-            
-        # Get the position
-        pos = [0, 0, 0]
-        active_node.GetNthControlPointPosition(n, pos)
-        
-        # Set the point label
-        if is_positive:
-            point_id = len(self.positive_points) + 1
-            label_prefix = "P"
-            label_type = "Positive"
-        else:
-            point_id = len(self.negative_points) + 1
-            label_prefix = "N"
-            label_type = "Negative"
-            
-        active_node.SetNthControlPointLabel(n, f"{label_prefix}-{point_id}")
-        
-        # Lock the point to prevent accidental movement
-        active_node.SetNthControlPointLocked(n, True)
-        
-        # Store the point info
-        point_info = {'id': n, 'position': pos}
-        if is_positive:
-            self.positive_points.append(point_info)
-        else:
-            self.negative_points.append(point_info)
-        
-        print(f"Added {label_type} point at: {pos}")
-        
-        # Make sure the point is visible in the scene
-        active_node.GetDisplayNode().SetVisibility(True)
-        active_node.SetDisplayVisibility(True)
-        
-        # Force scene update
-        slicer.mrmlScene.Modified()
-        
-        volumeNode = self.get_volume_node()
-        if volumeNode:
-            xyz = self.ras_to_xyz(pos)
-            
-            # Call point_prompt with the voxel coordinates
-            self.point_prompt(xyz=xyz, positive_click=is_positive)
-
-            # Instead of immediately starting a new placement, use a timer with short delay
-            # to ensure the current placement mode is fully complete
-            qt.QTimer.singleShot(0,  self.ui.pointPlaceWidget.placeButton().click)
-            print("Scheduled point placement restart with timer")
-    
     def ras_to_xyz(self, pos):
         volumeNode = self.get_volume_node()
         # Apply any transforms to get volume's RAS coordinates
@@ -916,17 +727,42 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
         return xyz
     
+    def on_point_placed(self, caller, event):
+        """Called when a point is placed in the scene"""        
+        # Determine which node called this (positive or negative)
+        is_positive = self.ui.pbPromptTypePositive.isChecked()
+            
+        n = caller.GetNumberOfControlPoints() - 1
+        if n < 0:
+            print("No control points found")
+            return
+            
+        # Get the position
+        pos = [0, 0, 0]
+        caller.GetNthControlPointPosition(n, pos)
+        
+        # Lock the point to prevent movement
+        caller.SetNthControlPointLocked(n, True)
+        
+        volumeNode = self.get_volume_node()
+        if volumeNode:
+            xyz = self.ras_to_xyz(pos)
+            
+            # Call point_prompt with the voxel coordinates
+            self.point_prompt(xyz=xyz, positive_click=is_positive)
+
+            # Instead of immediately starting a new placement, use a timer with short delay
+            # to ensure the current placement mode is fully complete
+            qt.QTimer.singleShot(0,  self.ui.pointPlaceWidget.placeButton().click)
+            print("Scheduled point placement restart with timer")
+    
     def on_bbox_placed(self, caller, event):
         # This method will be called every time a point is defined or moved
-        # For example, if you only want to print once the user has placed at least 2 corners:
-        # print(event)
         placeButton = self.ui.bboxPlaceWidget.placeButton()
         
         pos = [0, 0, 0]
         caller.GetNthControlPointPosition(0, pos)
         xyz = self.ras_to_xyz(pos)
-        
-        print('xyz!!!!!:', xyz)
 
         if self.prev_caller is not None and caller.GetID() == self.prev_caller.GetID():
             print("placed!")
@@ -934,26 +770,10 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             print(xyz, self.prev_roi_xyz)
             
             roiNode = slicer.mrmlScene.GetNodeByID(caller.GetID())
-
-            # Get the current size as a list; for an unrotated ROI, this is typically [size_X, size_Y, size_Z]
             currentSize = list(roiNode.GetSize())
-
             drawn_in_axis = np.argwhere(np.array(xyz) == self.prev_roi_xyz).squeeze()
-            print('drawn_in_axis:', drawn_in_axis)
             currentSize[drawn_in_axis] = 0 
-
-
-            # Apply the new size
             roiNode.SetSize(currentSize)
-            
-            print('currentSize:', currentSize)
-        
-            
-            # Reset the button state so it appears enabled
-            placeButton.setChecked(False)
-            placeButton.setEnabled(True)
-            
-            print('xyz, self.prev_roi_xyz:', xyz, self.prev_roi_xyz)
             
             volumeNode = self.get_volume_node()
             if volumeNode:                
@@ -969,7 +789,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                                  positive_click=self.ui.pbPromptTypePositive.isChecked())
 
                 def _next():
-                    self.setup_bbox()
+                    self.setup_prompts()
                     qt.QTimer.singleShot(0, placeButton.click)
                 qt.QTimer.singleShot(0, _next)
             
@@ -979,8 +799,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
 
         self.prev_caller = caller
 
-
-    # @ensure_slicer_setup
     def on_prompt_type_positive_clicked(self, checked=False):
         """Set the current prompt type to positive"""        
         # Update UI
@@ -991,7 +809,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.ui.pbPromptTypeNegative.setChecked(False)
         print("Prompt type set to POSITIVE")
     
-    # @ensure_slicer_setup
     def toggle_prompt_type(self, checked=False):
         """Toggle between positive and negative prompt types (triggered by 'T' key)"""
         print("Toggling prompt type (positive <> negative)")
@@ -1000,7 +817,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         else:
             self.on_prompt_type_positive_clicked()
     
-    # @ensure_slicer_setup
     def on_prompt_type_negative_clicked(self, checked=False):
         """Set the current prompt type to negative"""
         
