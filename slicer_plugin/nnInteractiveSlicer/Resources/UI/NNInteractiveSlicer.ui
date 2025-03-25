@@ -115,7 +115,7 @@
                                                                     <string>Place a point</string>
                                                                 </property>
                                                                 <property name="text">
-                                                                    <string>Point2</string>
+                                                                    <string>Po̲int</string>
                                                                 </property>
                                                                 <property name="enabled">
                                                                     <bool>true</bool>
@@ -202,7 +202,7 @@
                                                                     <string>Place a bounding box</string>
                                                                 </property>
                                                                 <property name="text">
-                                                                    <string>Lasso</string>
+                                                                    <string>L̲asso</string>
                                                                 </property>
                                                                 <property name="enabled">
                                                                     <bool>true</bool>

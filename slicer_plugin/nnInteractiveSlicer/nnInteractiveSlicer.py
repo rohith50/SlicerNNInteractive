@@ -32,8 +32,6 @@ def ensure_synched(func):
             
             if self.selected_segment_changed():
                 print("Segment changed (or not previously set). Calling upload_segment_to_server()")
-                # self.clear_all_but_last_point()
-                print('Calling self.remove_prompt_nodes!')
                 self.remove_all_but_last_prompt()
                 self.upload_segment_to_server()
             else:
@@ -76,38 +74,38 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
         self.add_segmentation_widget()
         self.add_module_icon_to_toolbar()
-        self.setup_shortcuts()
         
         self.prompt_types = {
             "point": {
                 "node_class": "vtkMRMLMarkupsFiducialNode",
                 "node": None,
                 "name": "PointPrompt",
-                "button_text": "Point",
                 "display_node_markup_function": self.display_node_markup_point,
                 "on_placed_function": self.on_point_placed,
                 "place_widget": self.ui.pointPlaceWidget,
+                "button_text": self.ui.pointPlaceWidget.text,
             },
             "bbox": {
                 "node_class": "vtkMRMLMarkupsROINode",
                 "node": None,
                 "name": "BBoxPrompt",
-                "button_text": "BBox",
                 "display_node_markup_function": self.display_node_markup_bbox,
                 "on_placed_function": self.on_bbox_placed,
                 "place_widget": self.ui.bboxPlaceWidget,
+                "button_text": self.ui.bboxPlaceWidget.text,
             },
             "lasso": {
                 "node_class": "vtkMRMLMarkupsClosedCurveNode",
                 "node": None,
                 "name": "LassoPrompt",
-                "button_text": "Lasso",
                 "display_node_markup_function": self.display_node_markup_lasso,
                 "on_placed_function": self.on_lasso_placed,
                 "place_widget": self.ui.lassoPlaceWidget,
+                "button_text": self.ui.lassoPlaceWidget.text,
             }
         }
         
+        self.setup_shortcuts()
         self.setup_markups_points()
         self.init_ui_functionality()
         
@@ -335,6 +333,9 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
     def setup_shortcuts(self):
         shortcuts = {
+            "o": self.prompt_types["point"]["place_widget"].placeButton().click,
+            "b": self.prompt_types["bbox"]["place_widget"].placeButton().click,
+            "l": self.prompt_types["lasso"]["place_widget"].placeButton().click,
             "return": self.submit_lasso_if_present,
             "t": self.toggle_prompt_type,  # Add 'T' shortcut to toggle between positive/negative
         }
