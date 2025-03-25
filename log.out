@@ -23,3 +23,6 @@ clojure.lang.ExceptionInfo: No config file found for project 'file:///Users/coen
 2025-03-20T14:15:21.249Z  DEBUG [slang.lsp.handlers:171] - :sidebars/specs-by-category 4ms
 2025-03-20T14:15:21.250Z  DEBUG [slang.lsp.handlers:179] - :sidebars/processes 4ms
 2025-03-20T14:15:21.252Z  DEBUG [slang.lsp.handlers:175] - :sidebars/workflows 6ms
+2025-03-25T10:56:42.865Z  INFO [slang.lsp.server:407] - Shutting down...
+2025-03-25T10:56:47.535Z  INFO [slang.lsp.server.context:21] - Liveness probe - Parent process 32451 is not running - exiting server
+2025-03-25T10:56:47.539Z  INFO [slang.lsp.server.context:35] - Exiting...

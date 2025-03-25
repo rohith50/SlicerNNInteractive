@@ -39,15 +39,54 @@
                                 </attribute>
                                 <layout class="QVBoxLayout" name="verticalLayout_11">
                                     <item>
+                                        <widget class="QGroupBox" name="menuGroup">
+                                            <property name="title">
+                                                <string />
+                                            </property>
+                                            <layout class="QHBoxLayout" name="horizontalLayout_menu">
+                                                <item>
+                                                    <widget class="QPushButton"
+                                                        name="pbResetSegment">
+                                                        <property name="text">
+                                                            <string>&amp;Reset segment</string>
+                                                        </property>
+                                                        <property name="minimumSize">
+                                                            <size>
+                                                                <width>0</width>
+                                                                <height>30</height>
+                                                            </size>
+                                                        </property>
+                                                    </widget>
+                                                </item>
+                                                <item>
+                                                    <widget class="QPushButton" name="pbNextSegment">
+                                                        <property name="text">
+                                                            <string>Next &amp;segment</string>
+                                                        </property>
+                                                        <property name="minimumSize">
+                                                            <size>
+                                                                <width>0</width>
+                                                                <height>30</height>
+                                                            </size>
+                                                        </property>
+                                                    </widget>
+                                                </item>
+                                            </layout>
+                                        </widget>
+                                    </item>
+
+                                    <item>
                                         <widget class="QGroupBox" name="promptTypeGroup">
                                             <property name="title">
-                                                <string>Prompt Ṯype:</string>
+                                                <string>Prompt &amp;Type:</string>
                                             </property>
                                             <layout class="QVBoxLayout" name="verticalLayout_14">
                                                 <item>
-                                                    <layout class="QHBoxLayout" name="horizontalLayout_prompt_type">
+                                                    <layout class="QHBoxLayout"
+                                                        name="horizontalLayout_prompt_type">
                                                         <item>
-                                                            <widget class="QPushButton" name="pbPromptTypePositive">
+                                                            <widget class="QPushButton"
+                                                                name="pbPromptTypePositive">
                                                                 <property name="minimumSize">
                                                                     <size>
                                                                         <width>0</width>
@@ -55,7 +94,8 @@
                                                                     </size>
                                                                 </property>
                                                                 <property name="toolTip">
-                                                                    <string>Set prompt type to positive</string>
+                                                                    <string>Set prompt type to
+                                                                        positive</string>
                                                                 </property>
                                                                 <property name="text">
                                                                     <string>Positive</string>
@@ -69,7 +109,8 @@
                                                             </widget>
                                                         </item>
                                                         <item>
-                                                            <widget class="QPushButton" name="pbPromptTypeNegative">
+                                                            <widget class="QPushButton"
+                                                                name="pbPromptTypeNegative">
                                                                 <property name="minimumSize">
                                                                     <size>
                                                                         <width>0</width>
@@ -77,7 +118,8 @@
                                                                     </size>
                                                                 </property>
                                                                 <property name="toolTip">
-                                                                    <string>Set prompt type to negative</string>
+                                                                    <string>Set prompt type to
+                                                                        negative</string>
                                                                 </property>
                                                                 <property name="text">
                                                                     <string>Negative</string>
@@ -99,11 +141,16 @@
                                             </property>
                                             <layout class="QVBoxLayout" name="verticalLayout_12">
                                                 <item>
-                                                    <layout class="QVBoxLayout" name="verticalLayout_tools">
+                                                    <layout class="QVBoxLayout"
+                                                        name="verticalLayout_tools">
                                                         <item>
-                                                            <widget class="qSlicerMarkupsPlaceWidget" name="pointPlaceWidget">
-                                                                <property name="placeMultipleMarkups">
-                                                                    <enum>qSlicerMarkupsPlaceWidget::ForcePlaceSingleMarkup</enum>
+                                                            <widget
+                                                                class="qSlicerMarkupsPlaceWidget"
+                                                                name="pointPlaceWidget">
+                                                                <property
+                                                                    name="placeMultipleMarkups">
+                                                                    <enum>
+                                                                        qSlicerMarkupsPlaceWidget::ForcePlaceSingleMarkup</enum>
                                                                 </property>
                                                                 <property name="minimumSize">
                                                                     <size>
@@ -115,7 +162,7 @@
                                                                     <string>Place a point</string>
                                                                 </property>
                                                                 <property name="text">
-                                                                    <string>Po̲int</string>
+                                                                    <string>P&amp;oint</string>
                                                                 </property>
                                                                 <property name="enabled">
                                                                     <bool>true</bool>
@@ -131,9 +178,13 @@
 
 
                                                         <item>
-                                                            <widget class="qSlicerMarkupsPlaceWidget" name="bboxPlaceWidget">
-                                                                <property name="placeMultipleMarkups">
-                                                                    <enum>qSlicerMarkupsPlaceWidget::ForcePlaceSingleMarkup</enum>
+                                                            <widget
+                                                                class="qSlicerMarkupsPlaceWidget"
+                                                                name="bboxPlaceWidget">
+                                                                <property
+                                                                    name="placeMultipleMarkups">
+                                                                    <enum>
+                                                                        qSlicerMarkupsPlaceWidget::ForcePlaceSingleMarkup</enum>
                                                                 </property>
                                                                 <property name="minimumSize">
                                                                     <size>
@@ -145,7 +196,7 @@
                                                                     <string>Place a bounding box</string>
                                                                 </property>
                                                                 <property name="text">
-                                                                    <string>ḆBox</string>
+                                                                    <string>&amp;BBox</string>
                                                                 </property>
                                                                 <property name="enabled">
                                                                     <bool>true</bool>
@@ -160,7 +211,8 @@
                                                         </item>
 
                                                         <item>
-                                                            <widget class="QPushButton" name="pbInteractionScribble">
+                                                            <widget class="QPushButton"
+                                                                name="pbInteractionScribble">
                                                                 <property name="minimumSize">
                                                                     <size>
                                                                         <width>0</width>
@@ -168,7 +220,8 @@
                                                                     </size>
                                                                 </property>
                                                                 <property name="toolTip">
-                                                                    <string>Place a scribble prompt (not implemented)</string>
+                                                                    <string>Place a scribble prompt
+                                                                        (not implemented)</string>
                                                                 </property>
                                                                 <property name="text">
                                                                     <string>S̱cribble</string>
@@ -184,13 +237,16 @@
                                                                 </property>
                                                             </widget>
                                                         </item>
-                                                        
 
 
                                                         <item>
-                                                            <widget class="qSlicerMarkupsPlaceWidget" name="lassoPlaceWidget">
-                                                                <property name="placeMultipleMarkups">
-                                                                    <enum>qSlicerMarkupsPlaceWidget::ForcePlaceSingleMarkup</enum>
+                                                            <widget
+                                                                class="qSlicerMarkupsPlaceWidget"
+                                                                name="lassoPlaceWidget">
+                                                                <property
+                                                                    name="placeMultipleMarkups">
+                                                                    <enum>
+                                                                        qSlicerMarkupsPlaceWidget::ForcePlaceSingleMarkup</enum>
                                                                 </property>
                                                                 <property name="minimumSize">
                                                                     <size>
@@ -202,7 +258,7 @@
                                                                     <string>Place a bounding box</string>
                                                                 </property>
                                                                 <property name="text">
-                                                                    <string>L̲asso</string>
+                                                                    <string>&amp;Lasso</string>
                                                                 </property>
                                                                 <property name="enabled">
                                                                     <bool>true</bool>
@@ -230,9 +286,11 @@
                                             </property>
                                             <layout class="QVBoxLayout" name="verticalLayout_12b">
                                                 <item>
-                                                    <layout class="QVBoxLayout" name="verticalLayout_tools">
+                                                    <layout class="QVBoxLayout"
+                                                        name="verticalLayout_tools">
                                                         <item>
-                                                            <widget class="QProgressBar" name="uploadProgressBar">
+                                                            <widget class="QProgressBar"
+                                                                name="uploadProgressBar">
                                                                 <property name="value">
                                                                     <number>0</number>
                                                                 </property>
@@ -248,7 +306,7 @@
                                     </item>
                                 </layout>
                             </widget>
-                            
+
                             <widget class="QWidget" name="tabConfig">
                                 <attribute name="title">
                                     <string>Configuration</string>
@@ -261,7 +319,8 @@
                                             </property>
                                             <layout class="QVBoxLayout" name="verticalLayout_5">
                                                 <item>
-                                                    <layout class="QHBoxLayout" name="horizontalLayout_server">
+                                                    <layout class="QHBoxLayout"
+                                                        name="horizontalLayout_server">
                                                         <item>
                                                             <widget class="QLabel" name="label">
                                                                 <property name="text">
@@ -281,7 +340,7 @@
                                             </layout>
                                         </widget>
                                     </item>
-                                    
+
                                     <item>
                                         <spacer name="verticalSpacer">
                                             <property name="orientation">
@@ -301,7 +360,7 @@
                     </item>
                 </layout>
             </item>
-            
+
             <item>
                 <widget class="QGroupBox" name="segmentationGroup">
                     <property name="title">
@@ -322,6 +381,6 @@
             <container>1</container>
         </customwidget>
     </customwidgets>
-    <resources/>
-    <connections/>
+    <resources />
+    <connections />
 </ui>

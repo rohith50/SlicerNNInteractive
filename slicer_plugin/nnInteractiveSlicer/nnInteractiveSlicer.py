@@ -1,7 +1,6 @@
 import slicer
 import qt
 import vtk
-import logging
 
 from slicer.i18n import tr as _
 from slicer.i18n import translate
@@ -10,7 +9,6 @@ from slicer.ScriptedLoadableModule import *
 import numpy as np
 
 import threading
-import time
 
 import io
 import gzip
@@ -21,7 +19,6 @@ import importlib.util
 import time
 
 from skimage.draw import polygon
-
 
 def ensure_synched(func):
     def inner(self, *args, **kwargs):
@@ -38,7 +35,7 @@ def ensure_synched(func):
                 print("Segment did not change!")
                 
         except Exception as e:
-            print("Error in ensure_synched:", e)
+            print(f"Error in ensure_synched: {e}")
         finally:            
             return func(self, *args, **kwargs)
     return inner
@@ -120,7 +117,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         settings = qt.QSettings()
         settings.setValue("nnInteractiveSlicer/server", self.server)
         
-        print("Server URL updated and saved:", self.server)
+        print(f"Server URL updated and saved: {self.server}")
     
     def init_ui_functionality(self):
         self.ui.uploadProgressGroup.setVisible(False)
@@ -140,6 +137,10 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.current_prompt_type_positive = True
         self.ui.pbPromptTypePositive.setStyleSheet(self.selected_style)
         self.ui.pbPromptTypeNegative.setStyleSheet(self.unselected_style)
+        
+        # Top buttons
+        self.ui.pbResetSegment.clicked.connect(self.clear_current_segment)
+        self.ui.pbNextSegment.clicked.connect(self.make_new_segment)
         
         # Connect Prompt Type buttons
         self.ui.pbPromptTypePositive.clicked.connect(self.on_prompt_type_positive_clicked)
@@ -390,7 +391,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     def add_module_icon_to_toolbar(self):
         toolbar = slicer.util.mainWindow().findChild(qt.QToolBar, "ModuleSelectorToolBar")
         if not toolbar:
-            logging.warning("Could not find 'ModuleSelectorToolBar'.")
+            print("Could not find 'ModuleSelectorToolBar'.")
             return
 
         for existing_action in toolbar.actions():
@@ -441,7 +442,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             # Retrieve image data, window, and level.
             t0 = time.time()
             image_data = self.get_image_data()  # Expected to return (image_data, window, level)
-            print('self.get_image_data took', time.time() - t0)
+            print(f'self.get_image_data took {time.time() - t0}')
             
             if image_data is None:
                 print("No image data available to upload.")
@@ -452,7 +453,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             buffer = io.BytesIO()
             np.save(buffer, image_data)
             compressed_data = gzip.compress(buffer.getvalue())
-            print('len(compressed_data):', len(compressed_data))
+            print(f'len(compressed_data): {len(compressed_data)}')
             
             files = {
                 'file': ('volume.npy.gz', compressed_data, 'application/octet-stream')
@@ -460,14 +461,11 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
 
             print("Uploading payload to server...")
             url = f"{self.server}/upload_image"  # Update this with your actual endpoint.
-            print('url:', url)
             
-            print('271 took', time.time() - t0)
+            print(f'271 took {time.time() - t0}')
             t0 = time.time()
 
             from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
-
-            # self.ui.uploadProgressGroup.setVisible(True)
 
             slicer.progress_window = slicer.util.createProgressDialog(autoClose=False)
             slicer.progress_window.minimum = 0
@@ -499,17 +497,17 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                 data=m,
                 headers={"Content-Encoding": "gzip", 'Content-Type': m.content_type}
             )
-            print('Response took', time.time() - t0)
+            print(f'Response took {time.time() - t0}')
             
             if response.status_code == 200:
                 print("Image successfully uploaded to server.")
             else:
-                print("Image upload failed with status code:", response.status_code)
+                print(f"Image upload failed with status code: {response.status_code}")
 
             # self.ui.uploadProgressGroup.setVisible(False)
             slicer.progress_window.close()
         except Exception as e:
-            print("Error in upload_image_to_server:", e)
+            print(f"Error in upload_image_to_server: {e}")
 
     def mask_to_np_upload_file(self, mask):
         buffer = io.BytesIO()
@@ -524,7 +522,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
 
     def upload_segment_to_server(self):
         print("Syncing segment with server...")
-        # return
         try:
             segment_data = self.get_segment_data()
             files = self.mask_to_np_upload_file(segment_data)
@@ -537,14 +534,14 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                 files=files,
                 headers={"Content-Encoding": "gzip"}
             )
-            print('Response took', time.time() - t0)
+            print(f'Response took {time.time() - t0}')
             
             if response.status_code == 200:
                 print("Image successfully uploaded to server.")
             else:
-                print("Image upload failed with status code:", response.status_code)
+                print(f"Image upload failed with status code: {response.status_code}")
         except Exception as e:
-            print("Error in upload_image_to_server:", e)
+            print(f"Error in upload_image_to_server: {e}")
     
     @ensure_synched
     def point_prompt(self, xyz=None, positive_click=False):
@@ -557,7 +554,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
         unpacked_segmentation = self.unpack_binary_segmentation(seg_response.content, decompress=False)
         print(seg_response)
-        print(f"{positive_click} point prompt triggered!", xyz)
+        print(f"{positive_click} point prompt triggered! {xyz}")
         
         self.show_segmentation(unpacked_segmentation)
     
@@ -572,18 +569,12 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                   'positive_click': positive_click})
         
         unpacked_segmentation = self.unpack_binary_segmentation(seg_response.content, decompress=False)
-        print('np.sum(unpacked_segmentation):', np.sum(unpacked_segmentation))
         self.show_segmentation(unpacked_segmentation)
     
     @ensure_synched
     def lasso_prompt(self, mask, positive_click=False):
         url = f"{self.server}/add_lasso_interaction"
-        print(url)
-        try:
-            import SimpleITK as sitk
-            sim = sitk.GetImageFromArray(mask)
-            sitk.WriteImage(sim, '/Users/coendevente/Desktop/a.nii.gz')
-            
+        try:            
             buffer = io.BytesIO()
             np.save(buffer, mask)
             compressed_data = gzip.compress(buffer.getvalue())
@@ -603,12 +594,11 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             
             if seg_response.status_code == 200:
                 unpacked_segmentation = self.unpack_binary_segmentation(seg_response.content, decompress=False)
-                print('np.sum(unpacked_segmentation):', np.sum(unpacked_segmentation))
                 self.show_segmentation(unpacked_segmentation)
             else:
-                print("Lasso prompt upload failed with status code:", seg_response.status_code)
+                print(f"Lasso prompt upload failed with status code: {seg_response.status_code}")
         except Exception as e:
-            print("Error in lasso_prompt:", e)
+            print(f"Error in lasso_prompt: {e}")
     
     def unpack_binary_segmentation(self, binary_data, decompress=False):
         """
@@ -660,7 +650,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         segmentationNode.GetSegmentation().CollapseBinaryLabelmaps()
         del segmentation_mask
         
-        print('show_segmentation took', time.time() - t0)
+        print(f'show_segmentation took {time.time() - t0}')
     
     def make_new_segment(self):
         segmentation_node = self.get_segmentation_node()
@@ -734,14 +724,14 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         old_segment_data = self.previous_states.get("segment_data", None)
         selected_segment_changed = old_segment_data is None or not np.all(old_segment_data.astype(bool) == segment_data.astype(bool))
         
-        print('segment_data.sum():', segment_data.sum())
+        print(f'segment_data.sum(): {segment_data.sum()}')
         
         if old_segment_data is not None:
-            print('old_segment_data.sum():', old_segment_data.sum())
+            print(f'old_segment_data.sum(): {old_segment_data.sum()}')
         else:
             print('old_segment_data is None')
 
-        print('selected_segment_changed:', selected_segment_changed)
+        print(f'selected_segment_changed: {selected_segment_changed}')
 
         return selected_segment_changed
 
@@ -763,7 +753,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         return
 
     def __del__(self):
-        # pass
         self.remove_shortcut_items()
     
     def ras_to_xyz(self, pos):
@@ -827,11 +816,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         placeButton = self.ui.bboxPlaceWidget.placeButton()
         xyz = self.xyz_from_caller(caller)
 
-        if self.prev_caller is not None and caller.GetID() == self.prev_caller.GetID():
-            print("placed!")
-            
-            print(xyz, self.prev_bbox_xyz)
-            
+        if self.prev_caller is not None and caller.GetID() == self.prev_caller.GetID():            
             roi_node = slicer.mrmlScene.GetNodeByID(caller.GetID())
             current_size = list(roi_node.GetSize())
             drawn_in_axis = np.argwhere(np.array(xyz) == self.prev_bbox_xyz).squeeze()
@@ -907,15 +892,12 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
 
     def submit_lasso_if_present(self):
         caller = self.prompt_types["lasso"]["node"]            
-        
-        print('Lasso finished!')
         xyzs = self.xyz_from_caller(caller, return_all=True)
-        print('xyzs:', xyzs)
-        mask = self.lasso_points_to_mask(xyzs)
         
-        print('xyzs:', xyzs)
-        print('mask.shape:', mask.shape)
-        print('np.sum(mask):', np.sum(mask))
+        if len(xyzs) < 3:
+            return
+        
+        mask = self.lasso_points_to_mask(xyzs)
         
         volume_node = self.get_volume_node()
         if volume_node:
@@ -925,8 +907,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                 self.setup_prompts()
                 qt.QTimer.singleShot(0, self.ui.lassoPlaceWidget.placeButton().click)
                 self.ui.lassoPlaceWidget.placeButton().setText(self.prompt_types["lasso"]["button_text"])
-            
-            print("Scheduled point placement restart with timer")
             qt.QTimer.singleShot(0, _next)
 
     def on_prompt_type_positive_clicked(self, checked=False):
