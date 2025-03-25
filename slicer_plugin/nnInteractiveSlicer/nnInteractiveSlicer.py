@@ -106,7 +106,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         }
         
         self.setup_shortcuts()
-        self.setup_markups_points()
+        self.setup_prompts()
         self.init_ui_functionality()
         
         _ = self.get_current_segment_id()
@@ -182,6 +182,8 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         display_node.SetSliceProjection(False)  # Make points visible in all slice views
     
     def setup_prompts(self):        
+        self.remove_prompt_nodes()
+        
         for prompt_name, prompt_type in self.prompt_types.items():
             node = slicer.mrmlScene.AddNewNodeByClass(prompt_type["node_class"])
             node.SetName(prompt_type["name"])
@@ -262,17 +264,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             
             for i in range(n):
                 node.RemoveNthControlPoint(0)
-        
-
-    def setup_markups_points(self):
-        """Initialize the markups fiducial list for storing point prompts"""
-        self.remove_prompt_nodes()
-        
-        self.setup_prompts()
-        
-        # Setup for interactive placement
-        self.is_placing_positive = False
-        self.is_placing_negative = False
     
     def install_dependencies(self):
         dependencies = {
@@ -336,6 +327,8 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             "o": self.prompt_types["point"]["place_widget"].placeButton().click,
             "b": self.prompt_types["bbox"]["place_widget"].placeButton().click,
             "l": self.prompt_types["lasso"]["place_widget"].placeButton().click,
+            "s": self.make_new_segment,
+            "c": self.clear_current_segment,
             "return": self.submit_lasso_if_present,
             "t": self.toggle_prompt_type,  # Add 'T' shortcut to toggle between positive/negative
         }
@@ -669,39 +662,58 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
         print('show_segmentation took', time.time() - t0)
     
+    def make_new_segment(self):
+        segmentation_node = self.get_segmentation_node()
+        segment_editor_node = self.get_widget_segment_editor().mrmlSegmentEditorNode()
+        
+        # Generate a new segment name
+        segment_ids = segmentation_node.GetSegmentation().GetSegmentIDs()
+        if len(segment_ids) == 0:
+            new_segment_name = "Segment_1"
+        else:
+            # Find the next available number
+            segment_numbers = [int(seg.split('_')[-1]) for seg in segment_ids if seg.startswith("Segment_") and seg.split('_')[-1].isdigit()]
+            next_segment_number = max(segment_numbers) + 1 if segment_numbers else 1
+            new_segment_name = f"Segment_{next_segment_number}"
+
+        # Create and add the new segment
+        new_segment_id = segmentation_node.GetSegmentation().AddEmptySegment(new_segment_name)
+        segment_editor_node.SetSelectedSegmentID(new_segment_id)
+
+        return segmentation_node, new_segment_id
+    
+    def clear_current_segment(self):
+        """
+        Clears the contents (labelmap) of the currently selected segment.
+        """
+        _, selected_segment_id = self.get_selected_segmentation_node_and_segment_id()
+
+        if selected_segment_id:
+            print(f"Clearing segment: {selected_segment_id}")
+            self.show_segmentation(np.zeros(self.get_image_data().shape, dtype=np.uint8))
+            self.setup_prompts()
+        else:
+            print("No segment selected to clear.")
+    
+    def get_segmentation_node(self):
+        # Get the current segmentation node (or create one if it does not exist)
+        segment_editor_node = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLSegmentationNode")
+        if segment_editor_node is None:
+            segment_editor_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
+            segment_editor_node.SetReferenceImageGeometryParameterFromVolumeNode(self.get_volume_node())
+            
+        return segment_editor_node
+    
     def get_selected_segmentation_node_and_segment_id(self):
         """Retrieve the currently selected segmentation node and segment ID.
         If no segmentation exists, it creates a new one.
-        """        
-        
-        # Get the current segmentation node (or create one if it does not exist)
-        segmentationNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLSegmentationNode")
-        if segmentationNode is None:
-            segmentationNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
-            segmentationNode.SetReferenceImageGeometryParameterFromVolumeNode(self.get_volume_node())
+        """
+        segmentationNode = self.get_segmentation_node()
+        selected_segment_id = self.get_current_segment_id()
+        if not selected_segment_id:
+            return self.make_new_segment()
 
-        # Retrieve the currently selected segment ID from the Segment Editor
-        segmentEditorNode = self.get_widget_segment_editor().mrmlSegmentEditorNode()
-        selectedSegmentID = self.get_current_segment_id()
-        # If no segment is selected, create a new segment
-        if not selectedSegmentID:
-            # Generate a new segment name
-            segmentIDs = segmentationNode.GetSegmentation().GetSegmentIDs()
-            if len(segmentIDs) == 0:
-                newSegmentName = "Segment_1"
-            else:
-                # Find the next available number
-                segmentNumbers = [int(seg.split('_')[-1]) for seg in segmentIDs if seg.startswith("Segment_") and seg.split('_')[-1].isdigit()]
-                nextSegmentNumber = max(segmentNumbers) + 1 if segmentNumbers else 1
-                newSegmentName = f"Segment_{nextSegmentNumber}"
-
-            # Create and add the new segment
-            newSegmentID = segmentationNode.GetSegmentation().AddEmptySegment(newSegmentName)
-            segmentEditorNode.SetSelectedSegmentID(newSegmentID)
- 
-            return segmentationNode, newSegmentID
-
-        return segmentationNode, selectedSegmentID
+        return segmentationNode, selected_segment_id
     
     def image_changed(self, do_prev_image_update=True):
         image_data = self.get_image_data()
@@ -851,11 +863,11 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.prev_caller = caller
         
     def on_lasso_placed(self, caller, event):
-        self.ui.lassoPlaceWidget.placeButton().setText("Lasso [Hit Enter to finish]")
+        self.ui.lassoPlaceWidget.placeButton().setText(f"{self.prompt_types['lasso']['button_text']} [Hit Enter to finish]")
         
     def on_lasso_clicked(self, checked=False):
         if checked:
-            self.ui.lassoPlaceWidget.placeButton().setText("Lasso [Hit Enter to finish]")
+            self.ui.lassoPlaceWidget.placeButton().setText(f"{self.prompt_types['lasso']['button_text']} [Hit Enter to finish]")
         else:
             self.ui.lassoPlaceWidget.placeButton().setText(self.prompt_types["lasso"]["button_text"])
 
@@ -898,6 +910,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
         print('Lasso finished!')
         xyzs = self.xyz_from_caller(caller, return_all=True)
+        print('xyzs:', xyzs)
         mask = self.lasso_points_to_mask(xyzs)
         
         print('xyzs:', xyzs)
