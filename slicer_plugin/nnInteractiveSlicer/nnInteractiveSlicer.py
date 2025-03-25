@@ -232,6 +232,9 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                                  prompt_type["on_placed_function"])      
                 
             prompt_type["node"] = node
+            
+        interactionNode = slicer.app.applicationLogic().GetInteractionNode()
+        interactionNode.SetCurrentInteractionMode(interactionNode.ViewTransform)
 
     def remove_prompt_nodes(self):
         for prompt_type in self.prompt_types.values():
@@ -329,8 +332,8 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             "b": self.prompt_types["bbox"]["place_widget"].placeButton().click,
             "l": self.prompt_types["lasso"]["place_widget"].placeButton().click,
             "s": self.make_new_segment,
-            "c": self.clear_current_segment,
-            "return": self.submit_lasso_if_present,
+            "r": self.clear_current_segment,
+            "Shift+L": self.submit_lasso_if_present,
             "t": self.toggle_prompt_type,  # Add 'T' shortcut to toggle between positive/negative
         }
         self.shortcut_items = {}
@@ -436,7 +439,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         This function retrieves the image data, window, and level; converts the image data
         to a Base64-encoded string; and then makes a POST request to a fictive endpoint.
         """
-        # def _upload():
         print("Syncing image with server...")
         try:
             # Retrieve image data, window, and level.
@@ -616,19 +618,11 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         if self.get_image_data() is None:
             self.capture_image()
 
-        # Get the shape of the original volume (same as image_data shape)
         vol_shape = self.get_image_data().shape
-        
-        # Calculate the total number of bits (voxels)
         total_voxels = np.prod(vol_shape)
-        
-        # Unpack the binary data (convert from bytes to bits)
         unpacked_bits = np.unpackbits(np.frombuffer(binary_data, dtype=np.uint8))
-        
-        # Trim any extra bits (in case the bit length is not perfectly divisible)
         unpacked_bits = unpacked_bits[:total_voxels]
         
-        # Reshape into the original volume shape
         segmentation_mask = unpacked_bits.reshape(vol_shape).astype(np.bool_).astype(np.uint8)
         
         return segmentation_mask
@@ -669,6 +663,11 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         # Create and add the new segment
         new_segment_id = segmentation_node.GetSegmentation().AddEmptySegment(new_segment_name)
         segment_editor_node.SetSelectedSegmentID(new_segment_id)
+        
+        # Make sure the right node is selected
+        self.editor.setSegmentationNode(segmentation_node)
+        segment_editor_node.SetSelectedSegmentID(new_segment_id)
+        self.editor.updateWidgetFromMRML()
 
         return segmentation_node, new_segment_id
     
@@ -848,11 +847,11 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.prev_caller = caller
         
     def on_lasso_placed(self, caller, event):
-        self.ui.lassoPlaceWidget.placeButton().setText(f"{self.prompt_types['lasso']['button_text']} [Hit Enter to finish]")
+        self.ui.lassoPlaceWidget.placeButton().setText(f"{self.prompt_types['lasso']['button_text']} [Hit Shift+L to finish]")
         
     def on_lasso_clicked(self, checked=False):
         if checked:
-            self.ui.lassoPlaceWidget.placeButton().setText(f"{self.prompt_types['lasso']['button_text']} [Hit Enter to finish]")
+            self.ui.lassoPlaceWidget.placeButton().setText(f"{self.prompt_types['lasso']['button_text']} [Hit Shift+L to finish]")
         else:
             self.ui.lassoPlaceWidget.placeButton().setText(self.prompt_types["lasso"]["button_text"])
 
