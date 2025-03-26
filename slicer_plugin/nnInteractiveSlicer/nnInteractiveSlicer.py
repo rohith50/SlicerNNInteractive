@@ -147,6 +147,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.ui.pbPromptTypeNegative.clicked.connect(self.on_prompt_type_negative_clicked)
         
         self.ui.pbInteractionScribble.clicked.connect(self.on_scribble_clicked)
+        self.ui.pbInteractionScribble.setCheckable(True)
         self.prompt_types["lasso"]["place_widget"].placeButton().clicked.connect(self.on_lasso_clicked)
         
         self.interaction_tool_mode = None
@@ -186,6 +187,17 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     def setup_prompts(self):        
         self.remove_prompt_nodes()
         
+        unselected_style = """
+                    min-height: 22px;
+                    font-size: 13pt;
+        """
+        
+        selected_style = """
+            background-color: #3498db;  /* blue */
+            color: white;
+        """
+        
+        
         for prompt_name, prompt_type in self.prompt_types.items():
             node = slicer.mrmlScene.AddNewNodeByClass(prompt_type["node_class"])
             node.SetName(prompt_type["name"])
@@ -214,16 +226,13 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             place_button.setCheckable(True)
 
             # 2) Define a style sheet for the checked state
-            place_button.setStyleSheet("""
-                QToolButton {
-                    /* normal state: no special styling */
-                    min-height: 22px;
-                    font-size: 13pt;
-                }
-                QToolButton:checked {
-                    background-color: #3498db;  /* blue */
-                    color: white;
-                }
+            place_button.setStyleSheet(f"""
+                QToolButton {{
+                    {unselected_style}
+                }}
+                QToolButton:checked {{
+                    {selected_style}
+                }}
             """)
 
             self.prev_caller = None        
@@ -238,9 +247,29 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         interactionNode.SetCurrentInteractionMode(interactionNode.ViewTransform)
         
         self.setup_scribble_prompt()
+        self.ui.pbInteractionScribble.setStyleSheet(f"""
+            QPushButton {{
+                {unselected_style}
+            }}
+            QPushButton:checked {{
+                {selected_style}
+            }}
+        """)
     
     def on_scribble_clicked(self, checked=False):
         if not checked:
+            
+            # Deactivate paint effect
+            if self.scribble_editor_widget:
+                self.scribble_editor_widget.setActiveEffectByName("")  # Clears the active effect
+            
+            # Optionally clear or reset the segmentation node
+            if hasattr(self, "_scribble_labelmap_callback_tag"):
+                tag = self._scribble_labelmap_callback_tag.get("tag", None)
+                if tag:
+                    self.scribble_segment_node.RemoveObserver(tag)
+                del self._scribble_labelmap_callback_tag
+
             return
 
         segment_id = "fg" if self.is_positive else "bg"
@@ -309,7 +338,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
 
         # Clean up observer if you only want it once
         if hasattr(self, "_scribble_labelmap_callback_tag"):
-            self.ui.pbInteractionScribble.click()
             caller.RemoveObserver(self._scribble_labelmap_callback_tag["tag"])
             label_name = self._scribble_labelmap_callback_tag["label_name"]
             del self._scribble_labelmap_callback_tag
@@ -332,7 +360,8 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
         self.lasso_or_scribble_prompt(mask=diff_mask, positive_click=self.is_positive, tp="scribble")
         
-        qt.QTimer.singleShot(0, self.ui.pbInteractionScribble.click)
+        self.ui.pbInteractionScribble.click()  # turn it off
+        self.ui.pbInteractionScribble.click()  # turn it on
         
     def remove_prompt_nodes(self):
         def _remove(node_name):
