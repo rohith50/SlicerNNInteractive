@@ -681,6 +681,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             print(f"Clearing segment: {selected_segment_id}")
             self.show_segmentation(np.zeros(self.get_image_data().shape, dtype=np.uint8))
             self.setup_prompts()
+            self.upload_segment_to_server()
         else:
             print("No segment selected to clear.")
     
