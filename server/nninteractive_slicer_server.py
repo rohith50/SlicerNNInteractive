@@ -117,6 +117,11 @@ class PromptManager:
         print("Lasso mask received with shape:", mask.shape)
         self.session.add_lasso_interaction(mask, include_interaction=include_interaction)
         return self.target_tensor.clone().cpu().detach().numpy()
+    
+    def add_scribble_interaction(self, mask, include_interaction):
+        print("Scribble mask received with shape:", mask.shape)
+        self.session.add_scribble_interaction(mask, include_interaction=include_interaction)
+        return self.target_tensor.clone().cpu().detach().numpy()
 
 
 PROMPT_MANAGER = PromptManager()
@@ -244,11 +249,7 @@ async def add_bbox_interaction(params: BBoxParams):
     return Response(content=segmentation_binary_data, media_type="application/octet-stream", headers={"Content-Encoding": "gzip"})
 
 
-@app.post("/add_lasso_interaction")
-async def add_lasso_interaction(
-    file: UploadFile = File(...),
-    positive_click: str = Form(...)
-):
+def process_mask_and_click_input(file_bytes, positive_click):
     # Convert the form string to a boolean.
     positive_click_bool = positive_click.lower() in ["true", "1", "yes"]
     t = time.time()
@@ -257,8 +258,6 @@ async def add_lasso_interaction(
         warnings.warn('There is no image in the server. Be sure to send it before')
         return {"status": "error", "message": "No image uploaded"}
     
-    # Read the uploaded file bytes and decompress.
-    file_bytes = await file.read()
     try:
         decompressed = gzip.decompress(file_bytes)
     except Exception as e:
@@ -267,12 +266,25 @@ async def add_lasso_interaction(
     # Load the numpy mask.
     mask = np.load(io.BytesIO(decompressed))
     
+    return mask, positive_click_bool
+
+
+@app.post("/add_lasso_interaction")
+async def add_lasso_interaction(
+    file: UploadFile = File(...),
+    positive_click: str = Form(...)
+):
+    # Read the uploaded file bytes and decompress.
+    file_bytes = await file.read()
+    
+    mask, positive_click_bool = process_mask_and_click_input(file_bytes, positive_click)
+    print('mask:', mask)
+    
     # Process the lasso interaction.
     seg_result = PROMPT_MANAGER.add_lasso_interaction(mask, include_interaction=positive_click_bool)
     
     # Convert the segmentation result to compressed binary data.
     segmentation_binary_data = segmentation_binary(seg_result, compress=True)
-    print(f'Server whole infer function time: {time.time() - t}')
     
     return Response(
         content=segmentation_binary_data,
@@ -280,6 +292,30 @@ async def add_lasso_interaction(
         headers={"Content-Encoding": "gzip"}
     )
 
+
+
+@app.post("/add_scribble_interaction")
+async def add_scribble_interaction(
+    file: UploadFile = File(...),
+    positive_click: str = Form(...)
+):
+    # Read the uploaded file bytes and decompress.
+    file_bytes = await file.read()
+    
+    mask, positive_click_bool = process_mask_and_click_input(file_bytes, positive_click)
+    
+    seg_result = PROMPT_MANAGER.add_scribble_interaction(mask, include_interaction=positive_click_bool)
+    
+    # Convert the segmentation result to compressed binary data.
+    segmentation_binary_data = segmentation_binary(seg_result, compress=True)
+    
+    return Response(
+        content=segmentation_binary_data,
+        media_type="application/octet-stream",
+        headers={"Content-Encoding": "gzip"}
+    )
+    
+    
     
 def unpack_binary_segmentation(binary_data, vol_shape):
     """

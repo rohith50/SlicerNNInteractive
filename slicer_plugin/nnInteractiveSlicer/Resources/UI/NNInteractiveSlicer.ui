@@ -220,22 +220,22 @@
                                                                     </size>
                                                                 </property>
                                                                 <property name="toolTip">
-                                                                    <string>Place a scribble prompt
-                                                                        (not implemented)</string>
+                                                                    <string>Place a scribble prompt</string>
                                                                 </property>
                                                                 <property name="text">
-                                                                    <string>S̱cribble</string>
+                                                                    <string>&amp;Scribble</string>
                                                                 </property>
                                                                 <property name="enabled">
-                                                                    <bool>false</bool>
+                                                                    <bool>true</bool>
                                                                 </property>
                                                                 <property name="checkable">
                                                                     <bool>true</bool>
                                                                 </property>
                                                                 <property name="visible">
-                                                                    <bool>false</bool>
+                                                                    <bool>true</bool>
                                                                 </property>
                                                             </widget>
+
                                                         </item>
 
 
@@ -255,7 +255,7 @@
                                                                     </size>
                                                                 </property>
                                                                 <property name="toolTip">
-                                                                    <string>Place a bounding box</string>
+                                                                    <string>Place a lasso</string>
                                                                 </property>
                                                                 <property name="text">
                                                                     <string>&amp;Lasso</string>

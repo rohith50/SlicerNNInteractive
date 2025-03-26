@@ -146,6 +146,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.ui.pbPromptTypePositive.clicked.connect(self.on_prompt_type_positive_clicked)
         self.ui.pbPromptTypeNegative.clicked.connect(self.on_prompt_type_negative_clicked)
         
+        self.ui.pbInteractionScribble.clicked.connect(self.on_scribble_clicked)
         self.prompt_types["lasso"]["place_widget"].placeButton().clicked.connect(self.on_lasso_clicked)
         
         self.interaction_tool_mode = None
@@ -235,14 +236,117 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             
         interactionNode = slicer.app.applicationLogic().GetInteractionNode()
         interactionNode.SetCurrentInteractionMode(interactionNode.ViewTransform)
+        
+        self.setup_scribble_prompt()
+    
+    def on_scribble_clicked(self, checked=False):
+        if not checked:
+            return
 
+        segment_id = "fg" if self.is_positive else "bg"
+
+        # Set segmentation and segment
+        self.scribble_editor_widget.setSegmentationNode(self.scribble_segment_node)
+        self.scribble_editor_node.SetSelectedSegmentID(segment_id)
+
+        # Set reference volume
+        volume_node = self.get_volume_node()
+        self.scribble_editor_widget.setSourceVolumeNode(volume_node)
+
+        # Activate paint effect
+        self.scribble_editor_widget.setActiveEffectByName("Paint")
+        self.scribble_editor_widget.updateWidgetFromMRML()
+        
+        paint_effect = self.scribble_editor_widget.activeEffect()
+        if paint_effect:
+            paint_effect.setParameter("BrushUseAbsoluteSize", "0")  # Use relative mode
+            paint_effect.setParameter("BrushSphere", "0")  # 2D brush
+            paint_effect.setParameter("BrushRelativeDiameter", ".75")
+            self._scribble_labelmap_callback_tag = {
+                "tag": self.scribble_segment_node.AddObserver(vtk.vtkCommand.AnyEvent, self.on_scribble_finished),
+                "label_name": segment_id
+            }
+
+        # self.setup_scribble_observer()
+        
+        print(f"Scribble mode (hidden editor) activated on '{segment_id}'")
+
+    
+    def setup_scribble_prompt(self):
+        import qSlicerSegmentationsModuleWidgetsPythonQt
+
+        # Create a background (headless) segment editor
+        self.scribble_editor_widget = qSlicerSegmentationsModuleWidgetsPythonQt.qMRMLSegmentEditorWidget()
+        self.scribble_editor_widget.setMRMLScene(slicer.mrmlScene)
+        self.scribble_editor_widget.setMaximumNumberOfUndoStates(10)
+
+        # Create a separate SegmentEditorNode
+        self.scribble_editor_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentEditorNode")
+        self.scribble_editor_widget.setMRMLSegmentEditorNode(self.scribble_editor_node)
+        
+        self.scribble_segment_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
+        self.scribble_segment_node.SetReferenceImageGeometryParameterFromVolumeNode(self.get_volume_node())
+        self.scribble_segment_node.SetName("ScribbleSegmentNode")
+
+        # Make sure the node exists and is set
+        self.scribble_editor_widget.setSegmentationNode(self.scribble_segment_node)
+        # return
+
+        self.scribble_segment_node.CreateDefaultDisplayNodes()
+        self.scribble_segment_node.GetSegmentation().AddEmptySegment("bg", "bg", [1.0, 0.0, 0.0])
+        self.scribble_segment_node.GetSegmentation().AddEmptySegment("fg", "fg", [0.0, 1.0, 0.0])
+        dn = self.scribble_segment_node.GetDisplayNode()
+        
+        opacity = 0.2
+        dn.SetSegmentOpacity2DFill("bg", opacity)
+        dn.SetSegmentOpacity2DOutline("bg", opacity)
+        dn.SetSegmentOpacity2DFill("fg", opacity)
+        dn.SetSegmentOpacity2DOutline("fg", opacity)
+        
+    def on_scribble_finished(self, caller, event):
+        print("Scribble stroke finished — labelmap modified!")
+        
+
+        # Clean up observer if you only want it once
+        if hasattr(self, "_scribble_labelmap_callback_tag"):
+            self.ui.pbInteractionScribble.click()
+            caller.RemoveObserver(self._scribble_labelmap_callback_tag["tag"])
+            label_name = self._scribble_labelmap_callback_tag["label_name"]
+            del self._scribble_labelmap_callback_tag
+        else:
+            return
+            
+        mask = slicer.util.arrayFromSegmentBinaryLabelmap(self.scribble_segment_node, 
+                                                          label_name, 
+                                                          self.get_volume_node())
+
+        if hasattr(self, "_prev_scribble_mask"):
+            prev_scribble_mask = self._prev_scribble_mask
+        else:
+            prev_scribble_mask = mask * 0
+            
+        diff_mask = mask - prev_scribble_mask
+        self._prev_scribble_mask = mask
+        
+        print(f"Scribble mask extracted. Nonzero voxels: {diff_mask.sum()}")
+        
+        self.lasso_or_scribble_prompt(mask=diff_mask, positive_click=self.is_positive, tp="scribble")
+        
+        qt.QTimer.singleShot(0, self.ui.pbInteractionScribble.click)
+        
     def remove_prompt_nodes(self):
-        for prompt_type in self.prompt_types.values():
-            existing_nodes = slicer.mrmlScene.GetNodesByName(prompt_type["name"])
+        def _remove(node_name):
+            existing_nodes = slicer.mrmlScene.GetNodesByName(node_name)
             if existing_nodes and existing_nodes.GetNumberOfItems() > 0:
                 for i in range(existing_nodes.GetNumberOfItems()):
                     node = existing_nodes.GetItemAsObject(i)
                     slicer.mrmlScene.RemoveNode(node)
+        
+        for prompt_type in list(self.prompt_types.values()):
+            _remove(prompt_type["name"])
+        
+        _remove("ScribbleSegmentNode")
+        
 
     def remove_all_but_last_prompt(self):
         last_modified_node = None
@@ -354,8 +458,8 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     def add_segmentation_widget(self):
         import qSlicerSegmentationsModuleWidgetsPythonQt
 
-        self.editor = qSlicerSegmentationsModuleWidgetsPythonQt.qMRMLSegmentEditorWidget()
-        self.editor.setMaximumNumberOfUndoStates(10)
+        self.editor_widget = qSlicerSegmentationsModuleWidgetsPythonQt.qMRMLSegmentEditorWidget()
+        self.editor_widget.setMaximumNumberOfUndoStates(10)
         
         segment_editor_singleton_tag = "SegmentEditor"
         self.segment_editor_node = slicer.mrmlScene.GetSingletonNode(
@@ -368,8 +472,8 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             self.segment_editor_node.SetSingletonTag(segment_editor_singleton_tag)
             self.segment_editor_node = slicer.mrmlScene.AddNode(self.segment_editor_node)
         
-        self.editor.setMRMLSegmentEditorNode(self.segment_editor_node)
-        self.editor.setMRMLScene(slicer.mrmlScene)
+        self.editor_widget.setMRMLSegmentEditorNode(self.segment_editor_node)
+        self.editor_widget.setMRMLScene(slicer.mrmlScene)
         
         # Add the editor widget to the segmentation group
         if hasattr(self.ui, 'segmentationGroup'):
@@ -387,7 +491,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                     item.widget().setParent(None)
                     
             # Add the editor widget
-            layout.addWidget(self.editor)
+            layout.addWidget(self.editor_widget)
         else:
             print("Could not find segmentationGroup in UI")
     
@@ -574,8 +678,8 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.show_segmentation(unpacked_segmentation)
     
     @ensure_synched
-    def lasso_prompt(self, mask, positive_click=False):
-        url = f"{self.server}/add_lasso_interaction"
+    def lasso_or_scribble_prompt(self, mask, positive_click=False, tp="lasso"):
+        url = f"{self.server}/add_{tp}_interaction"
         try:            
             buffer = io.BytesIO()
             np.save(buffer, mask)
@@ -598,9 +702,9 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                 unpacked_segmentation = self.unpack_binary_segmentation(seg_response.content, decompress=False)
                 self.show_segmentation(unpacked_segmentation)
             else:
-                print(f"Lasso prompt upload failed with status code: {seg_response.status_code}")
+                print(f"lasso_or_scribble_prompt upload failed with status code: {seg_response.status_code}")
         except Exception as e:
-            print(f"Error in lasso_prompt: {e}")
+            print(f"Error in lasso_or_scribble_prompt: {e}")
     
     def unpack_binary_segmentation(self, binary_data, decompress=False):
         """
@@ -648,7 +752,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     
     def make_new_segment(self):
         segmentation_node = self.get_segmentation_node()
-        segment_editor_node = self.get_widget_segment_editor().mrmlSegmentEditorNode()
+        # segment_editor_node = self.get_widget_segment_editor().mrmlSegmentEditorNode()
         
         # Generate a new segment name
         segment_ids = segmentation_node.GetSegmentation().GetSegmentIDs()
@@ -662,12 +766,15 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
 
         # Create and add the new segment
         new_segment_id = segmentation_node.GetSegmentation().AddEmptySegment(new_segment_name)
-        segment_editor_node.SetSelectedSegmentID(new_segment_id)
+        self.segment_editor_node.SetSelectedSegmentID(new_segment_id)
         
         # Make sure the right node is selected
-        self.editor.setSegmentationNode(segmentation_node)
-        segment_editor_node.SetSelectedSegmentID(new_segment_id)
-        self.editor.updateWidgetFromMRML()
+        self.editor_widget.setSegmentationNode(segmentation_node)
+        self.segment_editor_node.SetSelectedSegmentID(new_segment_id)
+        self.editor_widget.updateWidgetFromMRML()
+        
+        print('segment_editor_node:', self.segment_editor_node)
+        print('self.editor_widget:', self.editor_widget)
 
         return segmentation_node, new_segment_id
     
@@ -738,9 +845,8 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     def get_widget_segment_editor(self):
         return slicer.modules.segmenteditor.widgetRepresentation().self().editor
     
-    def get_current_segment_id(self):
-        segment_editor_widget = self.get_widget_segment_editor()
-        return segment_editor_widget.mrmlSegmentEditorNode().GetSelectedSegmentID()
+    def get_current_segment_id(self):        
+        return self.editor_widget.mrmlSegmentEditorNode().GetSelectedSegmentID()
         
     def cleanup(self):
         """Clean up resources when the module is closed"""
@@ -901,7 +1007,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
         volume_node = self.get_volume_node()
         if volume_node:
-            self.lasso_prompt(mask=mask, positive_click=self.is_positive)
+            self.lasso_or_scribble_prompt(mask=mask, positive_click=self.is_positive, tp="lasso")
 
             def _next():
                 self.setup_prompts()
