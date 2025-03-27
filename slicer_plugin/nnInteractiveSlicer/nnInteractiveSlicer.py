@@ -485,7 +485,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             "b": self.ui.pbInteractionBBox.click,
             "l": self.ui.pbInteractionLasso.click,
             "s": self.ui.pbInteractionScribble.click,
-            "x": self.make_new_segment,
+            "e": self.make_new_segment,
             "r": self.clear_current_segment,
             "Shift+L": self.submit_lasso_if_present,
             "t": self.toggle_prompt_type,  # Add 'T' shortcut to toggle between positive/negative
@@ -546,14 +546,21 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             print("Could not find segmentationGroup in UI")
     
     def get_volume_node(self):
-        volume_nodes = slicer.util.getNodesByClass("vtkMRMLScalarVolumeNode")
-        
-        if not volume_nodes:
-            return None
-        
-        volume_node = volume_nodes[-1]
-        
-        return volume_node
+        # Attempt to get the active volume from the selection node.
+        selectionNode = slicer.app.applicationLogic().GetSelectionNode()
+        activeVolumeID = selectionNode.GetActiveVolumeID()
+        if activeVolumeID:
+            volumeNode = slicer.mrmlScene.GetNodeByID(activeVolumeID)
+            if volumeNode:
+                return volumeNode
+
+        # Ff no active volume is selected, return the first available volume.
+        volumeNodes = slicer.util.getNodesByClass("vtkMRMLScalarVolumeNode")
+        if volumeNodes:
+            # Since getNodesByClass returns a dict, get one of the values.
+            return list(volumeNodes.values())[0]
+
+        return None
     
     def get_image_data(self):
         # Get the current volume node (adjust as needed if you have multiple volumes)
@@ -785,6 +792,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         print(f'show_segmentation took {time.time() - t0}')
     
     def make_new_segment(self):
+        print('doing make_new_segment')
         segmentation_node = self.get_segmentation_node()
         # segment_editor_node = self.get_widget_segment_editor().mrmlSegmentEditorNode()
         
@@ -826,11 +834,13 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     def get_segmentation_node(self):
         # If the segmentation widget has a currently selected segmentation node, return it.
         if hasattr(self, 'editor_widget') and self.editor_widget.segmentationNode():
-            return self.editor_widget.segmentationNode()
+            seg_node = self.editor_widget.segmentationNode()
+            if seg_node.GetName() != "ScribbleSegmentNode":
+                return seg_node
 
         # Otherwise, fall back to getting the first segmentation node (or create one if none exists).
         segment_editor_node = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLSegmentationNode")
-        if segment_editor_node is None:
+        if segment_editor_node is None or segment_editor_node.GetName() == "ScribbleSegmentNode":
             segment_editor_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
             segment_editor_node.SetReferenceImageGeometryParameterFromVolumeNode(self.get_volume_node())
             
@@ -840,6 +850,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         """Retrieve the currently selected segmentation node and segment ID.
         If no segmentation exists, it creates a new one.
         """
+        print('doing get_selected_segmentation_node_and_segment_id')
         segmentationNode = self.get_segmentation_node()
         selected_segment_id = self.get_current_segment_id()
         if not selected_segment_id:

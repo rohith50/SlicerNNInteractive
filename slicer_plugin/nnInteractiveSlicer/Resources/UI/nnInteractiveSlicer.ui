@@ -61,7 +61,7 @@
                                                 <item>
                                                     <widget class="QPushButton" name="pbNextSegment">
                                                         <property name="text">
-                                                            <string>Ne&amp;xt segment</string>
+                                                            <string>N&amp;ext segment</string>
                                                         </property>
                                                         <property name="minimumSize">
                                                             <size>
