@@ -79,7 +79,8 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                 "display_node_markup_function": self.display_node_markup_point,
                 "on_placed_function": self.on_point_placed,
                 "place_widget": self.ui.pointPlaceWidget,
-                "button_text": self.ui.pointPlaceWidget.text,
+                "button": self.ui.pbInteractionPoint,
+                "button_text": self.ui.pbInteractionPoint.text,
             },
             "bbox": {
                 "node_class": "vtkMRMLMarkupsROINode",
@@ -88,7 +89,8 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                 "display_node_markup_function": self.display_node_markup_bbox,
                 "on_placed_function": self.on_bbox_placed,
                 "place_widget": self.ui.bboxPlaceWidget,
-                "button_text": self.ui.bboxPlaceWidget.text,
+                "button": self.ui.pbInteractionBBox,
+                "button_text": self.ui.pbInteractionBBox.text,
             },
             "lasso": {
                 "node_class": "vtkMRMLMarkupsClosedCurveNode",
@@ -97,7 +99,8 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                 "display_node_markup_function": self.display_node_markup_lasso,
                 "on_placed_function": self.on_lasso_placed,
                 "place_widget": self.ui.lassoPlaceWidget,
-                "button_text": self.ui.lassoPlaceWidget.text,
+                "button": self.ui.pbInteractionLasso,
+                "button_text": self.ui.pbInteractionLasso.text,
             }
         }
         
@@ -146,8 +149,9 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.ui.pbPromptTypeNegative.clicked.connect(self.on_prompt_type_negative_clicked)
         
         self.ui.pbInteractionScribble.clicked.connect(self.on_scribble_clicked)
+        
         self.ui.pbInteractionScribble.setCheckable(True)
-        self.prompt_types["lasso"]["place_widget"].placeButton().clicked.connect(self.on_lasso_clicked)
+        self.ui.pbInteractionLasso.clicked.connect(self.on_lasso_clicked)
         
         self.interaction_tool_mode = None
         
@@ -178,8 +182,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     def display_node_markup_point(self, display_node):
         display_node.SetTextScale(0)  # Hide text labels
         display_node.SetGlyphScale(0.75)  # Make the points larger
-        # display_node.SetColor(0.0, 1.0, 0.0)  # Green color
-        # display_node.SetSelectedColor(0.0, 1.0, 0.0)
         display_node.SetColor(0.0, 0.0, 1.0)  # Green color
         display_node.SetSelectedColor(0.0, 0.0, 1.0)
         display_node.SetActiveColor(0.0, 0.0, 1.0)
@@ -190,15 +192,17 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.remove_prompt_nodes()
         
         unselected_style = """
-                    min-height: 22px;
+                    min-height: 30px;
                     font-size: 13pt;
         """
         
         selected_style = """
+            min-height: 30px;
             background-color: #3498db;  /* blue */
             color: white;
         """
         
+        self.all_prompt_buttons = []
         
         for prompt_name, prompt_type in self.prompt_types.items():
             node = slicer.mrmlScene.AddNewNodeByClass(prompt_type["node_class"])
@@ -210,32 +214,27 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             
             place_widget = prompt_type["place_widget"]
             place_widget.setMRMLScene(slicer.mrmlScene)
-            place_widget.buttonsVisible = False
-            place_widget.placeButton().show()
-            # place_widget.deleteButton().hide()
             place_widget.setCurrentNode(node)
 
             place_button = place_widget.placeButton()
             place_button.setText(prompt_type["button_text"])
             place_button.setToolButtonStyle(qt.Qt.ToolButtonTextOnly)
-            
-            # place_button.setIcon(qt.QIcon())
-            place_button.setStyleSheet("min-height: 22px; font-size: 13pt;")
 
             place_button = place_widget.placeButton()
 
-            # 1) Make the button checkable (so it can appear "pressed"/selected)
             place_button.setCheckable(True)
 
             # 2) Define a style sheet for the checked state
-            place_button.setStyleSheet(f"""
-                QToolButton {{
+            prompt_type["button"].setStyleSheet(f"""
+                QPushButton {{
                     {unselected_style}
                 }}
-                QToolButton:checked {{
+                QPushButton:checked {{
                     {selected_style}
                 }}
             """)
+            
+            place_widget.hide()
 
             self.prev_caller = None        
             
@@ -244,7 +243,13 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                                  prompt_type["on_placed_function"])      
                 
             prompt_type["node"] = node
+            prompt_type["button"].clicked.connect(
+                self.get_on_button_clicked_function(place_widget, prompt_type["button"])
+            )
+            self.all_prompt_buttons.append(prompt_type["button"])
             
+        # To make sure that when segment is reset, no interaction is selected (without this code
+        # the last interaction tool gets selected)
         interactionNode = slicer.app.applicationLogic().GetInteractionNode()
         interactionNode.SetCurrentInteractionMode(interactionNode.ViewTransform)
         
@@ -257,10 +262,26 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                 {selected_style}
             }}
         """)
+        self.all_prompt_buttons.append(self.ui.pbInteractionScribble)
+    
+    def hide_all_but_this_button(self, this_button):
+        for button in self.all_prompt_buttons:
+            if button != this_button:
+                button.setChecked(False)
+            
+        if this_button != self.ui.pbInteractionScribble:
+            self.set_lasso_unselected_text()
+    
+    def get_on_button_clicked_function(self, place_widget, this_button):
+        def on_button_clicked(checked=False):
+            self.hide_all_but_this_button(this_button)
+            place_widget.setPlaceModeEnabled(checked)
+        return on_button_clicked
     
     def on_scribble_clicked(self, checked=False):
+        self.hide_all_but_this_button(self.ui.pbInteractionScribble)
+        
         if not checked:
-            
             # Deactivate paint effect
             if self.scribble_editor_widget:
                 self.scribble_editor_widget.setActiveEffectByName("")  # Clears the active effect
@@ -297,8 +318,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                 "tag": self.scribble_segment_node.AddObserver(vtk.vtkCommand.AnyEvent, self.on_scribble_finished),
                 "label_name": segment_id
             }
-
-        # self.setup_scribble_observer()
         
         print(f"Scribble mode (hidden editor) activated on '{segment_id}'")
 
@@ -360,8 +379,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         diff_mask = mask - prev_scribble_mask
         self._prev_scribble_mask = mask
         
-        print(f"Scribble mask extracted. Nonzero voxels: {diff_mask.sum()}")
-        
         self.lasso_or_scribble_prompt(mask=diff_mask, positive_click=self.is_positive, tp="scribble")
         
         self.ui.pbInteractionScribble.click()  # turn it off
@@ -380,7 +397,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
         _remove("ScribbleSegmentNode")
         
-
     def remove_all_but_last_prompt(self):
         last_modified_node = None
         all_nodes = []
@@ -465,10 +481,11 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         
     def setup_shortcuts(self):
         shortcuts = {
-            "o": self.prompt_types["point"]["place_widget"].placeButton().click,
-            "b": self.prompt_types["bbox"]["place_widget"].placeButton().click,
-            "l": self.prompt_types["lasso"]["place_widget"].placeButton().click,
-            "s": self.make_new_segment,
+            "o": self.ui.pbInteractionPoint.click,
+            "b": self.ui.pbInteractionBBox.click,
+            "l": self.ui.pbInteractionLasso.click,
+            "s": self.ui.pbInteractionScribble.click,
+            "x": self.make_new_segment,
             "r": self.clear_current_segment,
             "Shift+L": self.submit_lasso_if_present,
             "t": self.toggle_prompt_type,  # Add 'T' shortcut to toggle between positive/negative
@@ -789,9 +806,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.editor_widget.setSegmentationNode(segmentation_node)
         self.segment_editor_node.SetSelectedSegmentID(new_segment_id)
         self.editor_widget.updateWidgetFromMRML()
-        
-        print('segment_editor_node:', self.segment_editor_node)
-        print('self.editor_widget:', self.editor_widget)
 
         return segmentation_node, new_segment_id
     
@@ -810,7 +824,11 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             print("No segment selected to clear.")
     
     def get_segmentation_node(self):
-        # Get the current segmentation node (or create one if it does not exist)
+        # If the segmentation widget has a currently selected segmentation node, return it.
+        if hasattr(self, 'editor_widget') and self.editor_widget.segmentationNode():
+            return self.editor_widget.segmentationNode()
+
+        # Otherwise, fall back to getting the first segmentation node (or create one if none exists).
         segment_editor_node = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLSegmentationNode")
         if segment_editor_node is None:
             segment_editor_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
@@ -969,15 +987,21 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             self.prev_bbox_xyz = xyz
 
         self.prev_caller = caller
-        
+    
+    def set_lasso_selected_text(self):
+        self.ui.pbInteractionLasso.setText(f"{self.prompt_types['lasso']['button_text']} [Hit Shift+L to finish]")
+    
+    def set_lasso_unselected_text(self):
+        self.ui.pbInteractionLasso.setText(f"{self.prompt_types['lasso']['button_text']}")
+    
     def on_lasso_placed(self, caller, event):
-        self.ui.lassoPlaceWidget.placeButton().setText(f"{self.prompt_types['lasso']['button_text']} [Hit Shift+L to finish]")
+        self.set_lasso_selected_text()
         
     def on_lasso_clicked(self, checked=False):
         if checked:
-            self.ui.lassoPlaceWidget.placeButton().setText(f"{self.prompt_types['lasso']['button_text']} [Hit Shift+L to finish]")
+            self.set_lasso_selected_text()
         else:
-            self.ui.lassoPlaceWidget.placeButton().setText(self.prompt_types["lasso"]["button_text"])
+            self.set_lasso_unselected_text()
 
     def lasso_points_to_mask(self, points):
         shape = self.get_image_data().shape

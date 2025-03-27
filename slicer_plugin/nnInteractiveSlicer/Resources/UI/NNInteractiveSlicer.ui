@@ -61,7 +61,7 @@
                                                 <item>
                                                     <widget class="QPushButton" name="pbNextSegment">
                                                         <property name="text">
-                                                            <string>Next &amp;segment</string>
+                                                            <string>Ne&amp;xt segment</string>
                                                         </property>
                                                         <property name="minimumSize">
                                                             <size>
@@ -152,6 +152,11 @@
                                                                     <enum>
                                                                         qSlicerMarkupsPlaceWidget::ForcePlaceSingleMarkup</enum>
                                                                 </property>
+                                                            </widget>
+                                                        </item>
+                                                        <item>
+                                                            <widget class="QPushButton"
+                                                                name="pbInteractionPoint">
                                                                 <property name="minimumSize">
                                                                     <size>
                                                                         <width>0</width>
@@ -159,7 +164,7 @@
                                                                     </size>
                                                                 </property>
                                                                 <property name="toolTip">
-                                                                    <string>Place a point</string>
+                                                                    <string>Place point prompt</string>
                                                                 </property>
                                                                 <property name="text">
                                                                     <string>P&amp;oint</string>
@@ -209,6 +214,33 @@
                                                                 </property>
                                                             </widget>
                                                         </item>
+                                                        <item>
+                                                            <widget class="QPushButton"
+                                                                name="pbInteractionBBox">
+                                                                <property name="minimumSize">
+                                                                    <size>
+                                                                        <width>0</width>
+                                                                        <height>30</height>
+                                                                    </size>
+                                                                </property>
+                                                                <property name="toolTip">
+                                                                    <string>Place BBox prompt</string>
+                                                                </property>
+                                                                <property name="text">
+                                                                    <string>&amp;BBox</string>
+                                                                </property>
+                                                                <property name="enabled">
+                                                                    <bool>true</bool>
+                                                                </property>
+                                                                <property name="checkable">
+                                                                    <bool>true</bool>
+                                                                </property>
+                                                                <property name="visible">
+                                                                    <bool>true</bool>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+
 
                                                         <item>
                                                             <widget class="QPushButton"
@@ -235,7 +267,6 @@
                                                                     <bool>true</bool>
                                                                 </property>
                                                             </widget>
-
                                                         </item>
 
 
@@ -256,6 +287,32 @@
                                                                 </property>
                                                                 <property name="toolTip">
                                                                     <string>Place a lasso</string>
+                                                                </property>
+                                                                <property name="text">
+                                                                    <string>&amp;Lasso</string>
+                                                                </property>
+                                                                <property name="enabled">
+                                                                    <bool>true</bool>
+                                                                </property>
+                                                                <property name="checkable">
+                                                                    <bool>true</bool>
+                                                                </property>
+                                                                <property name="visible">
+                                                                    <bool>true</bool>
+                                                                </property>
+                                                            </widget>
+                                                        </item>
+                                                        <item>
+                                                            <widget class="QPushButton"
+                                                                name="pbInteractionLasso">
+                                                                <property name="minimumSize">
+                                                                    <size>
+                                                                        <width>0</width>
+                                                                        <height>30</height>
+                                                                    </size>
+                                                                </property>
+                                                                <property name="toolTip">
+                                                                    <string>Place lasso prompt</string>
                                                                 </property>
                                                                 <property name="text">
                                                                     <string>&amp;Lasso</string>
