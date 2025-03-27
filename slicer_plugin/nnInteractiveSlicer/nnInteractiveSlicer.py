@@ -596,54 +596,41 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                 return
             
             t0 = time.time()
+            url = f"{self.server}/upload_image"  # Update this with your actual endpoint.
             
             buffer = io.BytesIO()
             np.save(buffer, image_data)
-            compressed_data = gzip.compress(buffer.getvalue())
-            print(f'len(compressed_data): {len(compressed_data)}')
-            
+            raw_data = buffer.getvalue()
+            print(f'len(raw_data): {len(raw_data)}')
+
             files = {
-                'file': ('volume.npy.gz', compressed_data, 'application/octet-stream')
+                'file': ('volume.npy', raw_data, 'application/octet-stream')
             }
 
-            print("Uploading payload to server...")
-            url = f"{self.server}/upload_image"  # Update this with your actual endpoint.
-            
-            print(f'271 took {time.time() - t0}')
-            t0 = time.time()
-
+            # Create your MultipartEncoder without gzip headers
             from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
-
-            slicer.progress_window = slicer.util.createProgressDialog(autoClose=False)
-            slicer.progress_window.minimum = 0
-            slicer.progress_window.maximum = 100
-            slicer.progress_window.setLabelText("Uploading image...")
 
             def my_callback(monitor):
                 if not hasattr(monitor, 'last_update'):
                     monitor.last_update = time.time()
-
                 if time.time() - monitor.last_update <= .2:
                     return
                 monitor.last_update = time.time()
-
-                slicer.progress_window.setValue(monitor.bytes_read / len(compressed_data) * 100)
+                slicer.progress_window.setValue(monitor.bytes_read / len(raw_data) * 100)
                 slicer.progress_window.show()
                 slicer.progress_window.activateWindow()
                 slicer.progress_window.setLabelText("Uploading image...")
-                # Process events to allow screen to refresh
                 slicer.app.processEvents()
 
-            e = MultipartEncoder(
-                fields=files
-            )
-            m = MultipartEncoderMonitor(e, my_callback)
-            
+            encoder = MultipartEncoder(fields=files)
+            monitor = MultipartEncoderMonitor(encoder, my_callback)
+
             response = requests.post(
                 url,
-                data=m,
-                headers={"Content-Encoding": "gzip", 'Content-Type': m.content_type}
+                data=monitor,
+                headers={'Content-Type': monitor.content_type}
             )
+
             print(f'Response took {time.time() - t0}')
             
             if response.status_code == 200:
