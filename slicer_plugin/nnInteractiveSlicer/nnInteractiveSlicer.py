@@ -70,7 +70,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.ui = slicer.util.childWidgetVariables(ui_widget)
         
         self.add_segmentation_widget()
-        self.add_module_icon_to_toolbar()
         
         self.prompt_types = {
             "point": {
@@ -179,8 +178,11 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     def display_node_markup_point(self, display_node):
         display_node.SetTextScale(0)  # Hide text labels
         display_node.SetGlyphScale(0.75)  # Make the points larger
-        display_node.SetColor(0.0, 1.0, 0.0)  # Green color
-        display_node.SetSelectedColor(0.0, 1.0, 0.0)
+        # display_node.SetColor(0.0, 1.0, 0.0)  # Green color
+        # display_node.SetSelectedColor(0.0, 1.0, 0.0)
+        display_node.SetColor(0.0, 0.0, 1.0)  # Green color
+        display_node.SetSelectedColor(0.0, 0.0, 1.0)
+        display_node.SetActiveColor(0.0, 0.0, 1.0)
         display_node.SetOpacity(1.0)  # Fully opaque
         display_node.SetSliceProjection(False)  # Make points visible in all slice views
     
@@ -322,8 +324,10 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         # return
 
         self.scribble_segment_node.CreateDefaultDisplayNodes()
-        self.scribble_segment_node.GetSegmentation().AddEmptySegment("bg", "bg", [1.0, 0.0, 0.0])
-        self.scribble_segment_node.GetSegmentation().AddEmptySegment("fg", "fg", [0.0, 1.0, 0.0])
+        # self.scribble_segment_node.GetSegmentation().AddEmptySegment("bg", "bg", [1.0, 0.0, 0.0])
+        # self.scribble_segment_node.GetSegmentation().AddEmptySegment("fg", "fg", [0.0, 1.0, 0.0])
+        self.scribble_segment_node.GetSegmentation().AddEmptySegment("bg", "bg", [0.0, 0.0, 1.0])
+        self.scribble_segment_node.GetSegmentation().AddEmptySegment("fg", "fg", [0.0, 0.0, 1.0])
         dn = self.scribble_segment_node.GetDisplayNode()
         
         opacity = 0.2
@@ -523,22 +527,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             layout.addWidget(self.editor_widget)
         else:
             print("Could not find segmentationGroup in UI")
-    
-    def add_module_icon_to_toolbar(self):
-        toolbar = slicer.util.mainWindow().findChild(qt.QToolBar, "ModuleSelectorToolBar")
-        if not toolbar:
-            print("Could not find 'ModuleSelectorToolBar'.")
-            return
-
-        for existing_action in toolbar.actions():
-            if existing_action.objectName == "nninteractive_slicer_action":
-                return
-
-        action = qt.QAction(qt.QIcon(self.resourcePath("Icons/nnInteractiveSlicer.png")), "nnInteractiveSlicer", toolbar)
-        action.setObjectName("nninteractive_slicer_action")
-        action.setToolTip("Switch to nnInteractiveSlicer module")
-        action.triggered.connect(lambda: slicer.util.selectModule("nnInteractiveSlicer"))
-        toolbar.addAction(action)
     
     def get_volume_node(self):
         volume_nodes = slicer.util.getNodesByClass("vtkMRMLScalarVolumeNode")
