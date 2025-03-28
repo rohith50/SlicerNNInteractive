@@ -610,6 +610,11 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             # Create your MultipartEncoder without gzip headers
             from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 
+            slicer.progress_window = slicer.util.createProgressDialog(autoClose=False)
+            slicer.progress_window.minimum = 0
+            slicer.progress_window.maximum = 100
+            slicer.progress_window.setLabelText("Uploading image...")
+
             def my_callback(monitor):
                 if not hasattr(monitor, 'last_update'):
                     monitor.last_update = time.time()

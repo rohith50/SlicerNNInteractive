@@ -146,12 +146,8 @@ def calculate_md5_array(image_data, xx=False):
 async def upload_image(
     file: UploadFile = File(None),
 ):
-    # Read the uploaded file bytes, then gzip-decompress
     file_bytes = await file.read()
-    decompressed = gzip.decompress(file_bytes)
-
-    # Load the numpy array from the decompressed data
-    arr = np.load(io.BytesIO(decompressed))
+    arr = np.load(io.BytesIO(file_bytes))
     PROMPT_MANAGER.set_image(arr)
     
     return {"status": "ok"}
