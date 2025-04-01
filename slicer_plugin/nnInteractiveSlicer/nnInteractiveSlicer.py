@@ -356,9 +356,8 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         dn.SetSegmentOpacity2DOutline("fg", opacity)
         
     def on_scribble_finished(self, caller, event):
-        print("Scribble stroke finished — labelmap modified!")
+        print("Scribble stroke finished - labelmap modified!")
         
-
         # Clean up observer if you only want it once
         if hasattr(self, "_scribble_labelmap_callback_tag"):
             caller.RemoveObserver(self._scribble_labelmap_callback_tag["tag"])
