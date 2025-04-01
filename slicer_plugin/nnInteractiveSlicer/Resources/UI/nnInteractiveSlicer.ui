@@ -24,7 +24,7 @@
                                 </font>
                             </property>
                             <property name="text">
-                                <string>nnInteractive Slicer</string>
+                                <string>nnInteractiveSlicer</string>
                             </property>
                         </widget>
                     </item>
