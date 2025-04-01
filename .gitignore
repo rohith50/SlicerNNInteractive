@@ -84,3 +84,5 @@ temp/
 
 *.DS_Store
 *.pth
+
+log.out
