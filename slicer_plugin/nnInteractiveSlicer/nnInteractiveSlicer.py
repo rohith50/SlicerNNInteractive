@@ -1,3 +1,14 @@
+import io
+import gzip
+import requests
+import copy
+import threading
+import time
+
+import importlib.util
+
+import numpy as np
+
 import slicer
 import qt
 import vtk
@@ -5,38 +16,31 @@ import vtk
 from slicer.i18n import tr as _
 from slicer.i18n import translate
 from slicer.ScriptedLoadableModule import *
+from PythonQt.QtGui import QMessageBox
 
-import numpy as np
-
-import threading
-
-import io
-import gzip
-import requests
-import copy
-
-import importlib.util
-import time
 
 from skimage.draw import polygon
 
 def ensure_synched(func):
     def inner(self, *args, **kwargs):
-        try:
-            if self.image_changed():
-                print("Image changed (or not previously set). Calling upload_segment_to_server()")
-                self.upload_image_to_server()
+        failed_to_sync = False
+        
+        if self.image_changed():
+            print("Image changed (or not previously set). Calling upload_segment_to_server()")
+            result = self.upload_image_to_server()
             
-            if self.selected_segment_changed():
-                print("Segment changed (or not previously set). Calling upload_segment_to_server()")
-                self.remove_all_but_last_prompt()
-                self.upload_segment_to_server()
-            else:
-                print("Segment did not change!")
-                
-        except Exception as e:
-            print(f"Error in ensure_synched: {e}")
-        finally:            
+            failed_to_sync = result is None
+        
+        if not failed_to_sync and self.selected_segment_changed():
+            print("Segment changed (or not previously set). Calling upload_segment_to_server()")
+            self.remove_all_but_last_prompt()
+            result = self.upload_segment_to_server()
+            
+            failed_to_sync = result is None
+        else:
+            print("Segment did not change!")
+        
+        if not failed_to_sync:
             return func(self, *args, **kwargs)
     return inner
 
@@ -120,7 +124,41 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         settings.setValue("nnInteractiveSlicer/server", self.server)
         
         print(f"Server URL updated and saved: {self.server}")
+        
+    def request_to_server(self, *args, **kwargs):
+        error_message = None
+        try:
+            response = requests.post(*args, **kwargs)
+        except requests.exceptions.MissingSchema as e:
+            if self.server == '':
+                error_message = "It seems you have not set the server URL yet!"
+            else:
+                error_message = "It seems the Server URL is unreachable!"
+
+            error_message += f"""
+            
+You can configure it in the 'Configuration' menu of the nnInteractiveSlicer plugin.
+
+This is the error: {e}."""
+        except Exception as e:
+            error_message = f"""Your request was unsuccessful.
+
+
+This is the error: {e}."""
+        
+        if error_message is None and response.status_code != 200:
+            error_message = f"""Something seems to have gone wrong with your request (Status code {response.status_code})."""
+        
+        if error_message is not None:
+            QMessageBox.warning(
+                slicer.util.mainWindow(),
+                "Error",
+                error_message
+            )
+            return None
     
+        return response
+
     def init_ui_functionality(self):
         self.ui.uploadProgressGroup.setVisible(False)
 
@@ -629,21 +667,15 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             encoder = MultipartEncoder(fields=files)
             monitor = MultipartEncoderMonitor(encoder, my_callback)
 
-            response = requests.post(
+            result = self.request_to_server(
                 url,
                 data=monitor,
                 headers={'Content-Type': monitor.content_type}
             )
 
-            print(f'Response took {time.time() - t0}')
-            
-            if response.status_code == 200:
-                print("Image successfully uploaded to server.")
-            else:
-                print(f"Image upload failed with status code: {response.status_code}")
-
-            # self.ui.uploadProgressGroup.setVisible(False)
             slicer.progress_window.close()
+            
+            return result
         except Exception as e:
             print(f"Error in upload_image_to_server: {e}")
 
@@ -665,19 +697,13 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             files = self.mask_to_np_upload_file(segment_data)
             url = f"{self.server}/upload_segment"  # Update this with your actual endpoint.
             
-            t0 = time.time()
-            
-            response = requests.post(
+            result = self.request_to_server(
                 url,
                 files=files,
                 headers={"Content-Encoding": "gzip"}
             )
-            print(f'Response took {time.time() - t0}')
             
-            if response.status_code == 200:
-                print("Image successfully uploaded to server.")
-            else:
-                print(f"Image upload failed with status code: {response.status_code}")
+            return result
         except Exception as e:
             print(f"Error in upload_image_to_server: {e}")
     
@@ -685,12 +711,13 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     def point_prompt(self, xyz=None, positive_click=False):
         url = f"{self.server}/add_point_interaction"
         
-        seg_response = requests.post(
+        seg_response = self.request_to_server(
             url, 
             json={'voxel_coord': xyz[::-1],
                   'positive_click': positive_click})
         
         unpacked_segmentation = self.unpack_binary_segmentation(seg_response.content, decompress=False)
+        print('unpacked_segmentation.sum():', unpacked_segmentation.sum())
         print(seg_response)
         print(f"{positive_click} point prompt triggered! {xyz}")
         
@@ -700,7 +727,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     def bbox_prompt(self, outer_point_one, outer_point_two, positive_click=False):
         url = f"{self.server}/add_bbox_interaction"
         
-        seg_response = requests.post(
+        seg_response = self.request_to_server(
             url, 
             json={'outer_point_one': outer_point_one[::-1],
                   'outer_point_two': outer_point_two[::-1],
@@ -724,7 +751,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                 'positive_click': str(positive_click)  # Make sure to send it as a string.
             }
             encoder = MultipartEncoder(fields=fields)
-            seg_response = requests.post(
+            seg_response = self.request_to_server(
                 url,
                 data=encoder,
                 headers={"Content-Type": encoder.content_type, "Content-Encoding": "gzip"}
