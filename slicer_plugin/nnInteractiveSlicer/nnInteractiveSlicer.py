@@ -24,7 +24,7 @@ def ensure_synched(func):
     def inner(self, *args, **kwargs):
         try:
             if self.image_changed():
-                print("Image changed (or not previously set). Calling upload_segment_to_server()")
+                print("Image changed (or not previously set). Calling upload_segment_to_server(↔)")
                 self.upload_image_to_server()
             
             if self.selected_segment_changed():
