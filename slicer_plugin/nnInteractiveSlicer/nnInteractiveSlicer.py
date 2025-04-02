@@ -19,7 +19,6 @@ from slicer.ScriptedLoadableModule import *
 from PythonQt.QtGui import QMessageBox
 
 
-from skimage.draw import polygon
 
 def ensure_synched(func):
     def inner(self, *args, **kwargs):
@@ -109,7 +108,10 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         }
         
         self.setup_shortcuts()
+        
+        self.all_prompt_buttons = {}
         self.setup_prompts()
+        
         self.init_ui_functionality()
         
         _ = self.get_current_segment_id()
@@ -117,7 +119,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
 
     def update_server(self):
         # Get the updated server URL from the UI
-        self.server = self.ui.Server.text
+        self.server = self.ui.Server.text.rstrip("/")
         
         # Save the server URL to QSettings
         settings = qt.QSettings()
@@ -165,7 +167,7 @@ This is the error: {e}."""
         # Load the saved server URL (default to an empty string if not set)
         savedServer = slicer.util.settingsValue("nnInteractiveSlicer/server", "")
         self.ui.Server.text = savedServer
-        self.server = savedServer
+        self.server = savedServer.rstrip("/")
 
         self.ui.Server.editingFinished.connect(self.update_server)
         
@@ -226,8 +228,9 @@ This is the error: {e}."""
         display_node.SetOpacity(1.0)  # Fully opaque
         display_node.SetSliceProjection(False)  # Make points visible in all slice views
     
-    def setup_prompts(self):        
-        self.remove_prompt_nodes()
+    def setup_prompts(self, skip_if_exists=False):
+        if not skip_if_exists:
+            self.remove_prompt_nodes()
         
         unselected_style = """
                     min-height: 30px;
@@ -240,9 +243,10 @@ This is the error: {e}."""
             color: white;
         """
         
-        self.all_prompt_buttons = []
-        
         for prompt_name, prompt_type in self.prompt_types.items():
+            if skip_if_exists and slicer.mrmlScene.GetFirstNodeByName(prompt_type["name"]):
+                print('Skipping', prompt_name)
+                continue
             node = slicer.mrmlScene.AddNewNodeByClass(prompt_type["node_class"])
             node.SetName(prompt_type["name"])
             node.CreateDefaultDisplayNodes()
@@ -262,7 +266,6 @@ This is the error: {e}."""
 
             place_button.setCheckable(True)
 
-            # 2) Define a style sheet for the checked state
             prompt_type["button"].setStyleSheet(f"""
                 QPushButton {{
                     {unselected_style}
@@ -284,26 +287,28 @@ This is the error: {e}."""
             prompt_type["button"].clicked.connect(
                 self.get_on_button_clicked_function(place_widget, prompt_type["button"])
             )
-            self.all_prompt_buttons.append(prompt_type["button"])
-            
+            self.all_prompt_buttons[prompt_name] = prompt_type["button"]
+        
+        if not skip_if_exists or slicer.mrmlScene.GetFirstNodeByName("ScribbleSegmentNode") is None:
+            self.setup_scribble_prompt()
+        
+            self.ui.pbInteractionScribble.setStyleSheet(f"""
+                QPushButton {{
+                    {unselected_style}
+                }}
+                QPushButton:checked {{
+                    {selected_style}
+                }}
+            """)
+            self.all_prompt_buttons["scribble"] = self.ui.pbInteractionScribble
+        
         # To make sure that when segment is reset, no interaction is selected (without this code
         # the last interaction tool gets selected)
-        interactionNode = slicer.app.applicationLogic().GetInteractionNode()
-        interactionNode.SetCurrentInteractionMode(interactionNode.ViewTransform)
+        interaction_node = slicer.app.applicationLogic().GetInteractionNode()
+        interaction_node.SetCurrentInteractionMode(interaction_node.ViewTransform)
         
-        self.setup_scribble_prompt()
-        self.ui.pbInteractionScribble.setStyleSheet(f"""
-            QPushButton {{
-                {unselected_style}
-            }}
-            QPushButton:checked {{
-                {selected_style}
-            }}
-        """)
-        self.all_prompt_buttons.append(self.ui.pbInteractionScribble)
-    
     def hide_all_but_this_button(self, this_button):
-        for button in self.all_prompt_buttons:
+        for button in self.all_prompt_buttons.values():
             if button != this_button:
                 button.setChecked(False)
             
@@ -313,6 +318,7 @@ This is the error: {e}."""
     def get_on_button_clicked_function(self, place_widget, this_button):
         def on_button_clicked(checked=False):
             self.hide_all_but_this_button(this_button)
+            self.setup_prompts(skip_if_exists=True)
             place_widget.setPlaceModeEnabled(checked)
         return on_button_clicked
     
@@ -463,7 +469,8 @@ This is the error: {e}."""
         dependencies = {
             'xxhash': 'xxhash==3.5.0',
             'requests_toolbelt': 'requests_toolbelt==1.0.0',
-            'SimpleITK': 'SimpleITK==2.3.1'
+            'SimpleITK': 'SimpleITK==2.3.1',
+            'skimage': 'skimage==0.22.0'
         }
 
         for dependency in dependencies:
@@ -1033,6 +1040,8 @@ This is the error: {e}."""
             self.set_lasso_unselected_text()
 
     def lasso_points_to_mask(self, points):
+        from skimage.draw import polygon
+
         shape = self.get_image_data().shape
         pts = np.array(points)  # shape (n, 3)
         
