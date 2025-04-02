@@ -4,6 +4,20 @@
 
 This repository makes [nnInteractive](https://github.com/MIC-DKFZ/nnInteractive) available in [3D Slicer](https://www.slicer.org/). nnInteractive is a deep learning-based framework for interactive segmentation of 3D images, allowing for fast voxel-wise segmentation using prompts like points, scribbles, bounding boxes, and lasso. You can read more about nnInteractive in the [ArXiv paper](https://arxiv.org/abs/2503.08373), or in the original [GitHub repository](https://github.com/MIC-DKFZ/nnInteractive). 3D slicer is a free and open source medical image viewer, and can be downloaded [here](https://download.slicer.org/).
 
+## Table of contents
+
+- [Installation](#installation)
+  - [Server side](#server-side)
+  - [Client side: Installation in 3D Slicer](#client-side-installation-in-3d-slicer)
+- [Usage](#usage)
+  - [Editing an existing segment
+](#editing-an-existing-segment)
+  - [Keyboard shortcuts](#keyboard-shortcuts)
+- [Common issues](#common-issues)
+- [Contributing](#contributing)
+- [Citation](#citation)
+- [License](#license)
+
 ## Installation
 
 `nnInteractiveSlicer` needs to be set up on the server side and the client side. The server side needs relatively heavy compute, as described here:
