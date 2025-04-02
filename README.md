@@ -36,7 +36,7 @@ If you would like to use a different port, say `1627`, replace `--port 1527` wit
 
 For now, `nnInteractiveSlicer` is not yet available in the Extensions Manager of 3D Slicer. So, currently, the following steps are still needed to install the `nnInteractiveSlicer` extension on the client-side in 3D Slicer:
 
-1. `git clone git@github.com:coendevente/nninteractive-slicer.git` (or download the current project as a `.zip` file from GitHub)
+1. `git clone git@github.com:coendevente/nninteractive-slicer.git` (or download the current project as a `.zip` file from GitHub).
 2. Open 3D Slicer and click the Module dropdown menu in the top left of the 3D Slicer window:
 	![Slicer dropdown menu](img/dropdown.png)
 3. Go to `Developer Tools` > `Extension Wizard`.
@@ -47,3 +47,7 @@ For now, `nnInteractiveSlicer` is not yet available in the Extensions Manager of
 7. Configure the right server settings by going to the `Configuration` tab. Then type in the URL of the server you set up in the [server-side](#server-side) installation procedure. This should look something like `http://remote_host_name:1527` or, if you run the server locally, `http://localhost:1527`.
 
 ## Usage
+
+## Citation
+
+## License
