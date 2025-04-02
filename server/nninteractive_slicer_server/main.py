@@ -408,7 +408,7 @@ def main():
     parser.add_argument("--port", type=int, default=1527, help="Port to listen on.")
     args = parser.parse_args()
 
-    uvicorn.run("nninteractive_slicer_server.main:app", host=args.host, port=args.port)
+    uvicorn.run(app, host=args.host, port=args.port)
 
 
 if __name__ == "__main__":
