@@ -33,7 +33,7 @@ DOWNLOAD_DIR = "/opt/server/temp"  # Specify the download directory
 app = FastAPI()
 
 ###############################################################################
-# IV. Utility / Helper Functions
+# Utility / helper functions
 ###############################################################################
 
 def calculate_md5_array(image_data, xx=False):
