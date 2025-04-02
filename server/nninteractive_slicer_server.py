@@ -1,39 +1,111 @@
 import time
-import json
 import warnings
-
-from fastapi import FastAPI, BackgroundTasks
-from pydantic import BaseModel
-import uvicorn
+import os
+import io
+import gzip
+import hashlib
 
 import numpy as np
-import io
-
-
-import os
 import torch
-import SimpleITK as sitk
+import uvicorn
+
+import xxhash
+
+from fastapi import FastAPI
+from pydantic import BaseModel
 from huggingface_hub import (
     snapshot_download,
-)  # Install huggingface_hub if not already installed
+)
+
 from nnInteractive.inference.inference_session import nnInteractiveInferenceSession
 
 
-from fastapi import FastAPI, Request, Response, UploadFile, File, Form
-import gzip
-
-import hashlib
-import xxhash
+from fastapi import FastAPI, Response, UploadFile, File, Form
 
 
-app = FastAPI()
-
+###############################################################################
+# Global constants & FastAPI app
+###############################################################################
 REPO_ID = "nnInteractive/nnInteractive"
 MODEL_NAME = "nnInteractive_v1.0"  # Updated models may be available in the future
 DOWNLOAD_DIR = "/opt/server/temp"  # Specify the download directory
 
+app = FastAPI()
 
+###############################################################################
+# IV. Utility / Helper Functions
+###############################################################################
+
+def calculate_md5_array(image_data, xx=False):
+    """
+    Calculate either an xxHash (if xx=True) or MD5 hash of a NumPy array’s bytes.
+    """
+    if xx:
+        xh = xxhash.xxh64()
+        xh.update(image_data.tobytes())
+
+        out_hash = xh.hexdigest()
+    else:
+        md5_hash = hashlib.md5()
+        md5_hash.update(image_data.tobytes())
+        out_hash = md5_hash.hexdigest()
+
+    return out_hash
+
+def unpack_binary_segmentation(binary_data, vol_shape):
+    """
+    Unpacks binary data (1 bit per voxel) into a full 3D numpy array (bool type).
+    """
+    total_voxels = np.prod(vol_shape)
+    unpacked_bits = np.unpackbits(np.frombuffer(binary_data, dtype=np.uint8))
+    unpacked_bits = unpacked_bits[:total_voxels]
+    segmentation_mask = (
+        unpacked_bits.reshape(vol_shape).astype(np.bool_).astype(np.uint8)
+    )
+
+    return segmentation_mask
+
+def segmentation_binary(seg_in, compress=False):
+    """
+    Convert a (boolean) segmentation array into packed bits and optionally compress.
+    """
+    seg_result = seg_in.astype(bool)  # Convert to bool type if not already
+    packed_segmentation = np.packbits(seg_result, axis=None)  # Pack into 1D byte array
+    packed_segmentation = packed_segmentation.tobytes()
+    if compress:
+        packed_segmentation = gzip.compress(packed_segmentation)
+    return packed_segmentation  # Convert to bytes for transmission
+
+def process_mask_and_click_input(file_bytes, positive_click):
+    """
+    Helper that decompresses file_bytes, loads the numpy mask, and interprets
+    the positive_click string as a boolean.
+    """
+    positive_click_bool = positive_click.lower() in ["true", "1", "yes"]
+    t = time.time()
+
+    if PROMPT_MANAGER.img is None:
+        warnings.warn("There is no image in the server. Be sure to send it before")
+        return {"status": "error", "message": "No image uploaded"}
+
+    try:
+        decompressed = gzip.decompress(file_bytes)
+    except Exception as e:
+        return {"status": "error", "message": f"Decompression failed: {e}"}
+
+    # Load the numpy mask.
+    mask = np.load(io.BytesIO(decompressed))
+
+    return mask, positive_click_bool
+
+###############################################################################
+# PromptManager class
+###############################################################################
 class PromptManager:
+    """
+    Manages the image, target tensor, and runs inference sessions for point, bbox,
+    lasso, and scribble interactions.
+    """
     def __init__(self):
         self.img = None
         self.target_tensor = None
@@ -42,11 +114,17 @@ class PromptManager:
         self.session = self.make_session()
 
     def download_weights(self):
-        download_path = snapshot_download(
+        """
+        Downloads only the files matching 'MODEL_NAME/*' into DOWNLOAD_DIR.
+        """
+        snapshot_download(
             repo_id=REPO_ID, allow_patterns=[f"{MODEL_NAME}/*"], local_dir=DOWNLOAD_DIR
         )
 
     def make_session(self):
+        """
+        Creates an nnInteractiveInferenceSession, points it at the downloaded model.
+        """
         session = nnInteractiveInferenceSession(
             device=torch.device("cuda:0"),  # Set inference device
             use_torch_compile=False,  # Experimental: Not tested yet
@@ -63,6 +141,9 @@ class PromptManager:
         return session
 
     def set_image(self, input_image):
+        """
+        Loads the user-provided 3D image into the session, resets interactions.
+        """
         self.session.reset_interactions()
 
         self.img = input_image[None]  # Ensure shape (1, x, y, z)
@@ -80,6 +161,10 @@ class PromptManager:
         self.session.set_target_buffer(self.target_tensor)
 
     def set_segment(self, mask):
+        """
+        Sets or resets a segmentation (mask) on the server side.
+        If mask is empty, resets the session's interactions.
+        """
         if np.sum(mask) == 0:
             self.session.reset_interactions()
             self.target_tensor = torch.zeros(
@@ -90,15 +175,19 @@ class PromptManager:
             self.session.add_initial_seg_interaction(mask)
 
     def add_point_interaction(self, point_coordinates, include_interaction):
+        """
+        Process a point-based interaction (positive or negative).
+        """
         self.session.add_point_interaction(
             point_coordinates, include_interaction=include_interaction
         )
 
         return self.target_tensor.clone().cpu().detach().numpy()
 
-    def add_bbox_interaction(
-        self, outer_point_one, outer_point_two, include_interaction
-    ):
+    def add_bbox_interaction(self, outer_point_one, outer_point_two, include_interaction):
+        """
+        Process bounding box-based interaction.
+        """
         print("outer_point_one, outer_point_two:", outer_point_one, outer_point_two)
 
         data = np.array([outer_point_one, outer_point_two])
@@ -117,137 +206,110 @@ class PromptManager:
         return self.target_tensor.clone().cpu().detach().numpy()
 
     def add_lasso_interaction(self, mask, include_interaction):
+        """
+        Process lasso-based interaction using a 3D mask.
+        """
         print("Lasso mask received with shape:", mask.shape)
-        self.session.add_lasso_interaction(
-            mask, include_interaction=include_interaction
-        )
+        self.session.add_lasso_interaction(mask, include_interaction=include_interaction)
         return self.target_tensor.clone().cpu().detach().numpy()
 
     def add_scribble_interaction(self, mask, include_interaction):
+        """
+        Process scribble-based interaction using a 3D mask.
+        """
         print("Scribble mask received with shape:", mask.shape)
-        self.session.add_scribble_interaction(
-            mask, include_interaction=include_interaction
-        )
+        self.session.add_scribble_interaction(mask, include_interaction=include_interaction)
         return self.target_tensor.clone().cpu().detach().numpy()
 
 
+###############################################################################
+# Global prompt manager instance
+###############################################################################
 PROMPT_MANAGER = PromptManager()
 
 
-def calculate_md5_array(image_data, xx=False):
-    """Calculate the MD5 checksum of a NumPy array."""
-    if xx:
-        xh = xxhash.xxh64()
-        xh.update(image_data.tobytes())
+###############################################################################
+# FastAPI endpoints
+###############################################################################
 
-        out_hash = xh.hexdigest()
-    else:
-        md5_hash = hashlib.md5()
-        md5_hash.update(image_data.tobytes())
-        out_hash = md5_hash.hexdigest()
-
-    return out_hash
-
-
+#
+# -- Upload endpoints
+#
 @app.post("/upload_image")
 async def upload_image(
     file: UploadFile = File(None),
 ):
+    """
+    Receive a npy file from the client and set it as the main image in PromptManager.
+    """
     file_bytes = await file.read()
     arr = np.load(io.BytesIO(file_bytes))
     PROMPT_MANAGER.set_image(arr)
 
     return {"status": "ok"}
 
-
 @app.post("/upload_segment")
 async def upload_segment(
     file: UploadFile = File(None),
 ):
-    # Read the uploaded file bytes, then gzip-decompress
+    """
+    Receive a gzipped npy file from the client and set it as the segmentation in PromptManager.
+    """
     file_bytes = await file.read()
     decompressed = gzip.decompress(file_bytes)
-
-    # Load the numpy array from the decompressed data
     arr = np.load(io.BytesIO(decompressed))
-    # PROMPT_MANAGER.set_target_tensor(arr)
-
     PROMPT_MANAGER.set_segment(arr)
-
     return {"status": "ok"}
 
-
-@app.post("/print_hello")
-async def print_hello():
-    print("Hello world")
-    return "Hello world returned"
-
-
-import threading
-
-partial_results = {}
-partial_results_lock = threading.Lock()
-
-
-@app.post("/get_segmentation_hash")
-def get_segmentation_hash():
-    if PROMPT_MANAGER.target_tensor is None:
-        return {"hash": ""}  # Return a dict, not json.dumps(...)
-    seg_array = PROMPT_MANAGER.target_tensor
-    md5_hash = calculate_md5_array(seg_array.astype(bool))
-    print("np.sum(seg_array.astype(bool)):", np.sum(seg_array.astype(bool)))
-    print("md5_hash:", md5_hash)
-    print("seg_array.shape:", seg_array.shape)
-    return {"hash": md5_hash}
-
-
+#
+# -- Point interaction endpoint
+#
 class PointParams(BaseModel):
     voxel_coord: list[int]
     positive_click: bool
 
-
 @app.post("/add_point_interaction")
 async def add_point_interaction(params: PointParams):
+    """
+    Receives a point (voxel_coord) + positive/negative. Updates the model & returns a binary mask.
+    """
     t = time.time()
     if PROMPT_MANAGER.img is None:
         warnings.warn("There is no image in the server. Be sure to send it before")
         return []
 
-    positive_click = params.positive_click
-
-    xyz = params.voxel_coord
-    print("xyz:", xyz)
-
-    # seg_result = PROMPT_MANAGER.add_point_interaction(xyz)
     seg_result = PROMPT_MANAGER.add_point_interaction(
-        xyz, include_interaction=positive_click
+        point_coordinates=params.voxel_coord,
+        include_interaction=params.positive_click
     )
-
-    segmentation_binary_data = segmentation_binary(seg_result, compress=True)
+    compressed_bin = segmentation_binary(seg_result, compress=True)
     print(f"Server whole infer function time: {time.time() - t}")
 
-    # Return as binary data with appropriate content type
     return Response(
-        content=segmentation_binary_data,
+        content=compressed_bin,
         media_type="application/octet-stream",
         headers={"Content-Encoding": "gzip"},
     )
 
 
+#
+# -- Bounding Box interaction endpoint
+#
 class BBoxParams(BaseModel):
     outer_point_one: list[int]
     outer_point_two: list[int]
     positive_click: bool
 
-
 @app.post("/add_bbox_interaction")
 async def add_bbox_interaction(params: BBoxParams):
+    """
+    Receives bounding box corners + positive/negative. Updates model & returns a mask.
+    """
     t = time.time()
     if PROMPT_MANAGER.img is None:
         warnings.warn("There is no image in the server. Be sure to send it before")
         return []
 
-    # seg_result = PROMPT_MANAGER.add_point_interaction(xyz)
     seg_result = PROMPT_MANAGER.add_bbox_interaction(
         params.outer_point_one,
         params.outer_point_two,
@@ -257,43 +319,26 @@ async def add_bbox_interaction(params: BBoxParams):
     segmentation_binary_data = segmentation_binary(seg_result, compress=True)
     print(f"Server whole infer function time: {time.time() - t}")
 
-    # Return as binary data with appropriate content type
     return Response(
         content=segmentation_binary_data,
         media_type="application/octet-stream",
         headers={"Content-Encoding": "gzip"},
     )
 
-
-def process_mask_and_click_input(file_bytes, positive_click):
-    # Convert the form string to a boolean.
-    positive_click_bool = positive_click.lower() in ["true", "1", "yes"]
-    t = time.time()
-
-    if PROMPT_MANAGER.img is None:
-        warnings.warn("There is no image in the server. Be sure to send it before")
-        return {"status": "error", "message": "No image uploaded"}
-
-    try:
-        decompressed = gzip.decompress(file_bytes)
-    except Exception as e:
-        return {"status": "error", "message": f"Decompression failed: {e}"}
-
-    # Load the numpy mask.
-    mask = np.load(io.BytesIO(decompressed))
-
-    return mask, positive_click_bool
-
+#
+# -- Lasso interaction endpoint
+#
 
 @app.post("/add_lasso_interaction")
 async def add_lasso_interaction(
-    file: UploadFile = File(...), positive_click: str = Form(...)
+    file: UploadFile = File(...), 
+    positive_click: str = Form(...)
 ):
-    # Read the uploaded file bytes and decompress.
+    """
+    Receives a gzipped npy mask + positive/negative. Treated as a 'lasso' 3D mask.
+    """
     file_bytes = await file.read()
-
     mask, positive_click_bool = process_mask_and_click_input(file_bytes, positive_click)
-    print("mask:", mask)
 
     # Process the lasso interaction.
     seg_result = PROMPT_MANAGER.add_lasso_interaction(
@@ -309,11 +354,17 @@ async def add_lasso_interaction(
         headers={"Content-Encoding": "gzip"},
     )
 
-
+#
+# -- Scribble interaction endpoint
+#
 @app.post("/add_scribble_interaction")
 async def add_scribble_interaction(
-    file: UploadFile = File(...), positive_click: str = Form(...)
+    file: UploadFile = File(...), 
+    positive_click: str = Form(...)
 ):
+    """
+    Receives a scribble mask + positive/negative. Updates model, returns updated segmentation.
+    """
     # Read the uploaded file bytes and decompress.
     file_bytes = await file.read()
 
@@ -331,37 +382,6 @@ async def add_scribble_interaction(
         media_type="application/octet-stream",
         headers={"Content-Encoding": "gzip"},
     )
-
-
-def unpack_binary_segmentation(binary_data, vol_shape):
-    """
-    Unpacks binary data (1 bit per voxel) into a full 3D numpy array (bool type).
-    """
-    total_voxels = np.prod(vol_shape)
-    unpacked_bits = np.unpackbits(np.frombuffer(binary_data, dtype=np.uint8))
-    unpacked_bits = unpacked_bits[:total_voxels]
-    segmentation_mask = (
-        unpacked_bits.reshape(vol_shape).astype(np.bool_).astype(np.uint8)
-    )
-
-    return segmentation_mask
-
-
-def segmentation_binary(seg_in, compress=False):
-    # Assuming seg_in is the boolean segmentation (True for segmented, False for not)
-    seg_result = seg_in.astype(bool)  # Convert to bool type if not already
-
-    # Pack the boolean array into bytes (1 bit per voxel)
-    packed_segmentation = np.packbits(seg_result, axis=None)  # Pack into 1D byte array
-
-    packed_segmentation = packed_segmentation.tobytes()
-
-    if compress:
-        # Compress the binary data with gzip
-        packed_segmentation = gzip.compress(packed_segmentation)
-
-    return packed_segmentation  # Convert to bytes for transmission
-
 
 if __name__ == "__main__":
     uvicorn.run("nninteractive_slicer_server:app", host="0.0.0.0", port=1527)
