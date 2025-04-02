@@ -36,6 +36,7 @@ app = FastAPI()
 # Utility / helper functions
 ###############################################################################
 
+
 def calculate_md5_array(image_data, xx=False):
     """
     Calculate either an xxHash (if xx=True) or MD5 hash of a NumPy array's bytes.
@@ -52,6 +53,7 @@ def calculate_md5_array(image_data, xx=False):
 
     return out_hash
 
+
 def unpack_binary_segmentation(binary_data, vol_shape):
     """
     Unpacks binary data (1 bit per voxel) into a full 3D numpy array (bool type).
@@ -65,6 +67,7 @@ def unpack_binary_segmentation(binary_data, vol_shape):
 
     return segmentation_mask
 
+
 def segmentation_binary(seg_in, compress=False):
     """
     Convert a (boolean) segmentation array into packed bits and optionally compress.
@@ -75,6 +78,7 @@ def segmentation_binary(seg_in, compress=False):
     if compress:
         packed_segmentation = gzip.compress(packed_segmentation)
     return packed_segmentation  # Convert to bytes for transmission
+
 
 def process_mask_and_click_input(file_bytes, positive_click):
     """
@@ -98,6 +102,7 @@ def process_mask_and_click_input(file_bytes, positive_click):
 
     return mask, positive_click_bool
 
+
 ###############################################################################
 # PromptManager class
 ###############################################################################
@@ -106,6 +111,7 @@ class PromptManager:
     Manages the image, target tensor, and runs inference sessions for point, bbox,
     lasso, and scribble interactions.
     """
+
     def __init__(self):
         self.img = None
         self.target_tensor = None
@@ -184,7 +190,9 @@ class PromptManager:
 
         return self.target_tensor.clone().cpu().detach().numpy()
 
-    def add_bbox_interaction(self, outer_point_one, outer_point_two, include_interaction):
+    def add_bbox_interaction(
+        self, outer_point_one, outer_point_two, include_interaction
+    ):
         """
         Process bounding box-based interaction.
         """
@@ -210,7 +218,9 @@ class PromptManager:
         Process lasso-based interaction using a 3D mask.
         """
         print("Lasso mask received with shape:", mask.shape)
-        self.session.add_lasso_interaction(mask, include_interaction=include_interaction)
+        self.session.add_lasso_interaction(
+            mask, include_interaction=include_interaction
+        )
         return self.target_tensor.clone().cpu().detach().numpy()
 
     def add_scribble_interaction(self, mask, include_interaction):
@@ -218,7 +228,9 @@ class PromptManager:
         Process scribble-based interaction using a 3D mask.
         """
         print("Scribble mask received with shape:", mask.shape)
-        self.session.add_scribble_interaction(mask, include_interaction=include_interaction)
+        self.session.add_scribble_interaction(
+            mask, include_interaction=include_interaction
+        )
         return self.target_tensor.clone().cpu().detach().numpy()
 
 
@@ -231,6 +243,7 @@ PROMPT_MANAGER = PromptManager()
 ###############################################################################
 # FastAPI endpoints
 ###############################################################################
+
 
 #
 # -- Upload endpoints
@@ -248,6 +261,7 @@ async def upload_image(
 
     return {"status": "ok"}
 
+
 @app.post("/upload_segment")
 async def upload_segment(
     file: UploadFile = File(None),
@@ -261,12 +275,14 @@ async def upload_segment(
     PROMPT_MANAGER.set_segment(arr)
     return {"status": "ok"}
 
+
 #
 # -- Point interaction endpoint
 #
 class PointParams(BaseModel):
     voxel_coord: list[int]
     positive_click: bool
+
 
 @app.post("/add_point_interaction")
 async def add_point_interaction(params: PointParams):
@@ -279,8 +295,7 @@ async def add_point_interaction(params: PointParams):
         return []
 
     seg_result = PROMPT_MANAGER.add_point_interaction(
-        point_coordinates=params.voxel_coord,
-        include_interaction=params.positive_click
+        point_coordinates=params.voxel_coord, include_interaction=params.positive_click
     )
     compressed_bin = segmentation_binary(seg_result, compress=True)
     print(f"Server whole infer function time: {time.time() - t}")
@@ -299,6 +314,7 @@ class BBoxParams(BaseModel):
     outer_point_one: list[int]
     outer_point_two: list[int]
     positive_click: bool
+
 
 @app.post("/add_bbox_interaction")
 async def add_bbox_interaction(params: BBoxParams):
@@ -325,14 +341,15 @@ async def add_bbox_interaction(params: BBoxParams):
         headers={"Content-Encoding": "gzip"},
     )
 
+
 #
 # -- Lasso interaction endpoint
 #
 
+
 @app.post("/add_lasso_interaction")
 async def add_lasso_interaction(
-    file: UploadFile = File(...), 
-    positive_click: str = Form(...)
+    file: UploadFile = File(...), positive_click: str = Form(...)
 ):
     """
     Receives a gzipped npy mask + positive/negative. Treated as a 'lasso' 3D mask.
@@ -354,13 +371,13 @@ async def add_lasso_interaction(
         headers={"Content-Encoding": "gzip"},
     )
 
+
 #
 # -- Scribble interaction endpoint
 #
 @app.post("/add_scribble_interaction")
 async def add_scribble_interaction(
-    file: UploadFile = File(...), 
-    positive_click: str = Form(...)
+    file: UploadFile = File(...), positive_click: str = Form(...)
 ):
     """
     Receives a scribble mask + positive/negative. Updates model, returns updated segmentation.
@@ -382,6 +399,7 @@ async def add_scribble_interaction(
         media_type="application/octet-stream",
         headers={"Content-Encoding": "gzip"},
     )
+
 
 if __name__ == "__main__":
     uvicorn.run("nninteractive_slicer_server:app", host="0.0.0.0", port=1527)
