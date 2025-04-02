@@ -4,7 +4,9 @@
 
 `nnInteractiveSlicer` needs to be set up on the server-side and the client-side. The server-side needs relatively heavy compute, as described here:
 
-> You need a Linux or Windows computer with a Nvidia GPU. 10GB of VRAM is recommended. Small objects should work with <6GB. nnInteractive supports Python 3.10+ - [The nnInteractive README](https://github.com/MIC-DKFZ/nnInteractive?tab=readme-ov-file#prerequisites)
+> You need a Linux or Windows computer with a Nvidia GPU. 10GB of VRAM is recommended. Small objects should work with <6GB. nnInteractive supports Python 3.10+
+> 
+> -- [The nnInteractive README](https://github.com/MIC-DKFZ/nnInteractive?tab=readme-ov-file#prerequisites)
 
 The client machine _can_ be the same as the server machine.
 
