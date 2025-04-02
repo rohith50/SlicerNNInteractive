@@ -57,4 +57,12 @@ Read more on how to contribute to this repository [here](CONTRIBUTING.md).
 
 ## Citation
 
+When using the `nnInteractiveSlicer`, please cite the original `nnInteractive` paper:
+
+> Isensee, F.*, Rokuss, M.*, Krämer, L.*, Dinkelacker, S., Ravindran, A., Stritzke, F., Hamm, B., Wald, T., Langenberg, M., Ulrich, C., Deissler, J., Floca, R., & Maier-Hein, K. (2025). nnInteractive: Redefining 3D Promptable Segmentation. https://arxiv.org/abs/2503.08373
+*: equal contribution
+
+Link: [![arXiv](https://img.shields.io/badge/arXiv-2503.08373-b31b1b.svg)](https://arxiv.org/abs/2503.08373)
+
 ## License
+This repository is available under a Apache-2.0 license (see [LICENSE](LICENSE)). **Please note** that the weights that are being downloaded when running the `nnInteractiveSlicer` server are available under a `Creative Commons Attribution Non Commercial Share Alike 4.0` license, as described in the original nnInteractive respository [here](https://github.com/MIC-DKFZ/nnInteractive/tree/master?tab=readme-ov-file#license).
