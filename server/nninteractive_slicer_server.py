@@ -38,7 +38,7 @@ app = FastAPI()
 
 def calculate_md5_array(image_data, xx=False):
     """
-    Calculate either an xxHash (if xx=True) or MD5 hash of a NumPy array’s bytes.
+    Calculate either an xxHash (if xx=True) or MD5 hash of a NumPy array's bytes.
     """
     if xx:
         xh = xxhash.xxh64()
