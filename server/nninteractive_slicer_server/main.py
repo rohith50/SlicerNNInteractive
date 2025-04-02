@@ -28,7 +28,7 @@ from fastapi import FastAPI, Response, UploadFile, File, Form
 ###############################################################################
 REPO_ID = "nnInteractive/nnInteractive"
 MODEL_NAME = "nnInteractive_v1.0"  # Updated models may be available in the future
-DOWNLOAD_DIR = "/opt/server/temp"  # Specify the download directory
+DOWNLOAD_DIR = ".nninteractive_weights"  # Specify the download directory
 
 app = FastAPI()
 

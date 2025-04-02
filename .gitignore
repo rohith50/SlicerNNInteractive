@@ -86,3 +86,4 @@ temp/
 *.pth
 
 log.out
+.nninteractive_weights
