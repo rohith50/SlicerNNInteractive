@@ -402,7 +402,7 @@ async def add_scribble_interaction(
 
 
 def main():
-    uvicorn.run("main:app", host="0.0.0.0", port=1527)
+    uvicorn.run(app, host="0.0.0.0", port=1527)
 
 
 if __name__ == "__main__":
