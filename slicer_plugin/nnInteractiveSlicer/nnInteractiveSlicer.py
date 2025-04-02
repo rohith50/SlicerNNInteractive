@@ -312,7 +312,7 @@ This is the error: {e}."""
             if button != this_button:
                 button.setChecked(False)
             
-        if this_button != self.ui.pbInteractionScribble:
+        if this_button != self.all_prompt_buttons["lasso"]:
             self.set_lasso_unselected_text()
     
     def get_on_button_clicked_function(self, place_widget, this_button):
@@ -323,6 +323,7 @@ This is the error: {e}."""
         return on_button_clicked
     
     def on_scribble_clicked(self, checked=False):
+        self.setup_prompts(skip_if_exists=True)
         self.hide_all_but_this_button(self.ui.pbInteractionScribble)
         
         if not checked:
@@ -399,6 +400,8 @@ This is the error: {e}."""
         dn.SetSegmentOpacity2DFill("fg", opacity)
         dn.SetSegmentOpacity2DOutline("fg", opacity)
         
+        self._prev_scribble_mask = None
+        
     def on_scribble_finished(self, caller, event):
         print("Scribble stroke finished - labelmap modified!")
         
@@ -414,7 +417,7 @@ This is the error: {e}."""
                                                           label_name, 
                                                           self.get_volume_node())
 
-        if hasattr(self, "_prev_scribble_mask"):
+        if hasattr(self, "_prev_scribble_mask") and self._prev_scribble_mask is not None:
             prev_scribble_mask = self._prev_scribble_mask
         else:
             prev_scribble_mask = mask * 0
@@ -598,7 +601,7 @@ This is the error: {e}."""
             if volumeNode:
                 return volumeNode
 
-        # Ff no active volume is selected, return the first available volume.
+        # If no active volume is selected, return the first available volume.
         volumeNodes = slicer.util.getNodesByClass("vtkMRMLScalarVolumeNode")
         if volumeNodes:
             # Since getNodesByClass returns a dict, get one of the values.
@@ -890,7 +893,8 @@ This is the error: {e}."""
             return
         
         old_image_data = self.previous_states.get("image_data", None)
-        image_changed =  old_image_data is None or not np.all(old_image_data == image_data)
+        
+        image_changed = old_image_data is None or not np.array_equal(old_image_data, image_data)
 
         if do_prev_image_update:
             self.previous_states["image_data"] = copy.deepcopy(image_data)
@@ -900,7 +904,7 @@ This is the error: {e}."""
     def selected_segment_changed(self):
         segment_data = self.get_segment_data()
         old_segment_data = self.previous_states.get("segment_data", None)
-        selected_segment_changed = old_segment_data is None or not np.all(old_segment_data.astype(bool) == segment_data.astype(bool))
+        selected_segment_changed = old_segment_data is None or not np.array_equal(old_segment_data.astype(bool), segment_data.astype(bool))
         
         print(f'segment_data.sum(): {segment_data.sum()}')
         
