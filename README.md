@@ -2,7 +2,7 @@
 
 # `nnInteractiveSlicer`: nnInteractive meets 3D Slicer
 
-This repository makes [nnInteractive](https://github.com/MIC-DKFZ/nnInteractive?tab=readme-ov-file#prerequisites) available in [3D Slicer](https://www.slicer.org/). nnInteractive is a deep learning-based framework for interactive segmentation of 3D images, allowing for very fast voxel-wise segmentation using prompts like points, scribbles, bounding boxes, and lasso. You can read more about nnInteractive in the [ArXiv paper](https://arxiv.org/abs/2503.08373), or in the original [GitHub repository](https://github.com/MIC-DKFZ/nnInteractive). 3D slicer is a free and open source medical image viewer, and can be downloaded [here](https://download.slicer.org/).
+This repository makes [nnInteractive](https://github.com/MIC-DKFZ/nnInteractive) available in [3D Slicer](https://www.slicer.org/). nnInteractive is a deep learning-based framework for interactive segmentation of 3D images, allowing for very fast voxel-wise segmentation using prompts like points, scribbles, bounding boxes, and lasso. You can read more about nnInteractive in the [ArXiv paper](https://arxiv.org/abs/2503.08373), or in the original [GitHub repository](https://github.com/MIC-DKFZ/nnInteractive). 3D slicer is a free and open source medical image viewer, and can be downloaded [here](https://download.slicer.org/).
 
 ## Installation
 
@@ -51,6 +51,9 @@ For now, `nnInteractiveSlicer` is not yet available in the Extensions Manager of
 7. Configure the right server settings by going to the `Configuration` tab. Then type in the URL of the server you set up in the [server-side](#server-side) installation procedure. This should look something like `http://remote_host_name:1527` or, if you run the server locally, `http://localhost:1527`.
 
 ## Usage
+
+## Contributing
+Read more on how to contribute to this repository [here](CONTRIBUTING.md).
 
 ## Citation
 
