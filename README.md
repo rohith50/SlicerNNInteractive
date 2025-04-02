@@ -52,6 +52,8 @@ For now, `nnInteractiveSlicer` is not yet available in the Extensions Manager of
 
 ## Usage
 
+Once you have completed the installation above, you can use `nnInteractiveSlicer` as follows:
+
 1. If you haven't done so already, load in your image (e.g., through dragging your image file into Slicer).
 
 2. Click one of the Interaction Tool buttons from the Interactive Prompts tab (point, bounding box, scribble, or lasso) and place your prompt in the image. This should result in a segmentation.
