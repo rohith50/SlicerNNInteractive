@@ -94,7 +94,7 @@ class nnInteractiveSlicer(ScriptedLoadableModule):
 
 class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     ###############################################################################
-    # I. Setup and initialization functions
+    # Setup and initialization functions
     ###############################################################################
 
     def setup(self):
@@ -323,7 +323,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.remove_shortcut_items()
 
     ###############################################################################
-    # II. Prompt and markup setup functions
+    # Prompt and markup setup functions
     ###############################################################################
 
     def setup_prompts(self, skip_if_exists=False):
@@ -581,7 +581,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         display_node.SetTextScale(0)
 
     ###############################################################################
-    # III. Event handlers
+    # Event handlers for prompts
     ###############################################################################
 
     #
@@ -885,7 +885,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.ui.pbInteractionScribble.click()  # turn it on
 
     ###############################################################################
-    # IV. Segmentation-related functions
+    # Segmentation-related functions
     ###############################################################################
 
     def add_segmentation_widget(self):
@@ -1100,7 +1100,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         return selected_segment_changed
 
     ###############################################################################
-    # V. Server communication and sync functions
+    # Server communication and sync functions
     ###############################################################################
 
     def update_server(self):
@@ -1229,7 +1229,7 @@ This is the error: {e}."""
             debug_print(f"Error in upload_image_to_server: {e}")
 
     ###############################################################################
-    # VI. Utility / converters functions
+    # Utility / converters functions
     ###############################################################################
 
     def get_image_data(self):
@@ -1400,7 +1400,7 @@ This is the error: {e}."""
         return mask
 
     ###############################################################################
-    # VII. Prompt type toggle (positive / negative)
+    # Prompt type toggle (positive / negative)
     ###############################################################################
 
     @property
