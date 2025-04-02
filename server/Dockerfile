@@ -27,7 +27,7 @@ RUN /opt/conda/envs/nnInteractive/bin/python3.12 -m pip install torch torchvisio
 
 WORKDIR /opt/server
 
-COPY main.py main.py
+COPY nninteractive_slicer_server/main.py main.py
 COPY requirements.txt requirements.txt
 
 RUN /opt/conda/envs/nnInteractive/bin/python3.12 -m pip install -r requirements.txt
