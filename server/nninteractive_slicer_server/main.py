@@ -4,6 +4,7 @@ import os
 import io
 import gzip
 import hashlib
+import argparse
 
 import numpy as np
 import torch
@@ -402,7 +403,12 @@ async def add_scribble_interaction(
 
 
 def main():
-    uvicorn.run(app, host="0.0.0.0", port=1527)
+    parser = argparse.ArgumentParser(description="Run the nnInteractive Slicer server.")
+    parser.add_argument("--host", default="0.0.0.0", help="Host interface to bind to.")
+    parser.add_argument("--port", type=int, default=1527, help="Port to listen on.")
+    args = parser.parse_args()
+
+    uvicorn.run("nninteractive_slicer_server.main:app", host=args.host, port=args.port)
 
 
 if __name__ == "__main__":
