@@ -401,5 +401,9 @@ async def add_scribble_interaction(
     )
 
 
-if __name__ == "__main__":
+def main():
     uvicorn.run("nninteractive_slicer_server:app", host="0.0.0.0", port=1527)
+
+
+if __name__ == "__main__":
+    main()

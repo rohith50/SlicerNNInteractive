@@ -27,7 +27,7 @@ RUN /opt/conda/envs/nnInteractive/bin/python3.12 -m pip install torch torchvisio
 
 WORKDIR /opt/server
 
-COPY nninteractive_slicer_server.py nninteractive_slicer_server.py
+COPY main.py main.py
 COPY requirements.txt requirements.txt
 
 RUN /opt/conda/envs/nnInteractive/bin/python3.12 -m pip install -r requirements.txt
@@ -39,4 +39,4 @@ RUN useradd -m user && chown -R user:user /opt/server
 USER user
 
 # Default command: open an interactive Python shell
-CMD ["/opt/conda/envs/nnInteractive/bin/python3.12", "nninteractive_slicer_server.py"]
+CMD ["/opt/conda/envs/nnInteractive/bin/python3.12", "main.py"]
