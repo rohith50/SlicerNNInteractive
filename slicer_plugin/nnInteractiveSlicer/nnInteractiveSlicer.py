@@ -71,6 +71,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         ui_widget = slicer.util.loadUI(self.resourcePath("UI/nnInteractiveSlicer.ui"))
         self.layout.addWidget(ui_widget)
         self.ui = slicer.util.childWidgetVariables(ui_widget)
+        self.scribble_segment_node_name = "ScribbleSegmentNode (do not touch)"
         
         self.add_segmentation_widget()
         
@@ -289,7 +290,7 @@ This is the error: {e}."""
             )
             self.all_prompt_buttons[prompt_name] = prompt_type["button"]
         
-        if not skip_if_exists or slicer.mrmlScene.GetFirstNodeByName("ScribbleSegmentNode") is None:
+        if not skip_if_exists or slicer.mrmlScene.GetFirstNodeByName(self.scribble_segment_node_name) is None:
             self.setup_scribble_prompt()
         
             self.ui.pbInteractionScribble.setStyleSheet(f"""
@@ -381,7 +382,7 @@ This is the error: {e}."""
         
         self.scribble_segment_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
         self.scribble_segment_node.SetReferenceImageGeometryParameterFromVolumeNode(self.get_volume_node())
-        self.scribble_segment_node.SetName("ScribbleSegmentNode")
+        self.scribble_segment_node.SetName(self.scribble_segment_node_name)
 
         # Make sure the node exists and is set
         self.scribble_editor_widget.setSegmentationNode(self.scribble_segment_node)
@@ -441,7 +442,7 @@ This is the error: {e}."""
         for prompt_type in list(self.prompt_types.values()):
             _remove(prompt_type["name"])
         
-        _remove("ScribbleSegmentNode")
+        _remove(self.scribble_segment_node_name)
         
     def remove_all_but_last_prompt(self):
         last_modified_node = None
@@ -863,12 +864,12 @@ This is the error: {e}."""
         # If the segmentation widget has a currently selected segmentation node, return it.
         if hasattr(self, 'editor_widget') and self.editor_widget.segmentationNode():
             seg_node = self.editor_widget.segmentationNode()
-            if seg_node.GetName() != "ScribbleSegmentNode":
+            if seg_node.GetName() != self.scribble_segment_node_name:
                 return seg_node
 
         # Otherwise, fall back to getting the first segmentation node (or create one if none exists).
         segment_editor_node = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLSegmentationNode")
-        if segment_editor_node is None or segment_editor_node.GetName() == "ScribbleSegmentNode":
+        if segment_editor_node is None or segment_editor_node.GetName() == self.scribble_segment_node_name:
             segment_editor_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
             segment_editor_node.SetReferenceImageGeometryParameterFromVolumeNode(self.get_volume_node())
             
