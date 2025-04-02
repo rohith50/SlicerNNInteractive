@@ -52,6 +52,22 @@ For now, `nnInteractiveSlicer` is not yet available in the Extensions Manager of
 
 ## Usage
 
+1. If you haven't done so already, load in your image (e.g., through dragging your image file into Slicer).
+
+2. Click one of the Interaction Tool buttons from the Interactive Prompts tab (point, bounding box, scribble, or lasso) and place your prompt in the image. This should result in a segmentation.
+
+3. If needed, you can correct the generated segmentation with positive and negative prompts (between which you can toggle using the Positive/Negative buttons). 
+
+	a) Alternatively, you can reset the current segment using the "Reset segment button".
+
+4. You can add a new segment by clicking the "Next segment" button, or clicking the "+ Add" button in the Segment Editor. You can always go back to previous segments by selecting it in the Segment Editor.
+
+### Editing an existing segment
+You can edit an existing segmentation (generated using this plugin, or obtained otherwise, such as through loading in a segmentation file), by selecting the segment in the Segment Editor. Prompts are always applied to the selected segment.
+
+### Keyboard shortcuts
+Each button in the Interactive Prompts tab has a keyboard shortcut, indicated by the underlined letter.
+
 
 ## Common issues
 
