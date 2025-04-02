@@ -868,24 +868,25 @@ This is the error: {e}."""
                 return seg_node
 
         # Otherwise, fall back to getting the first segmentation node (or create one if none exists).
-        segment_editor_node = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLSegmentationNode")
-        if segment_editor_node is None or segment_editor_node.GetName() == self.scribble_segment_node_name:
-            segment_editor_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
-            segment_editor_node.SetReferenceImageGeometryParameterFromVolumeNode(self.get_volume_node())
+        segmentation_node = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLSegmentationNode")
+        if segmentation_node is None or segmentation_node.GetName() == self.scribble_segment_node_name:
+            segmentation_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
+            segmentation_node.SetReferenceImageGeometryParameterFromVolumeNode(self.get_volume_node())
+            self.editor_widget.setSegmentationNode(segmentation_node)
             
-        return segment_editor_node
+        return segmentation_node
     
     def get_selected_segmentation_node_and_segment_id(self):
         """Retrieve the currently selected segmentation node and segment ID.
         If no segmentation exists, it creates a new one.
         """
         print('doing get_selected_segmentation_node_and_segment_id')
-        segmentationNode = self.get_segmentation_node()
+        segmentation_node = self.get_segmentation_node()
         selected_segment_id = self.get_current_segment_id()
         if not selected_segment_id:
             return self.make_new_segment()
 
-        return segmentationNode, selected_segment_id
+        return segmentation_node, selected_segment_id
     
     def image_changed(self, do_prev_image_update=True):
         image_data = self.get_image_data()
