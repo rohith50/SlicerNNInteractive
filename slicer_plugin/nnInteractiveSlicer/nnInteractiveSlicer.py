@@ -1134,9 +1134,7 @@ This is the error: {e}."""
         except Exception as e:
             error_message = f"""Your request was unsuccessful.
 
-
 This is the error: {e}."""
-
         if error_message is None and response.status_code != 200:
             error_message = f"""Something seems to have gone wrong with your request (Status code {response.status_code})."""
 
