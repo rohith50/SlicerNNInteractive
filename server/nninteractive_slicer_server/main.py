@@ -89,9 +89,9 @@ def process_mask_and_click_input(file_bytes, positive_click):
     positive_click_bool = positive_click.lower() in ["true", "1", "yes"]
     t = time.time()
 
-    if PROMPT_MANAGER.img is None:
-        warnings.warn("There is no image in the server. Be sure to send it before")
-        return {"status": "error", "message": "No image uploaded"}
+    error = get_error_if_img_not_set()
+    if error is not None:
+        return error
 
     try:
         decompressed = gzip.decompress(file_bytes)
@@ -102,6 +102,14 @@ def process_mask_and_click_input(file_bytes, positive_click):
     mask = np.load(io.BytesIO(decompressed))
 
     return mask, positive_click_bool
+
+
+def get_error_if_img_not_set():
+    if PROMPT_MANAGER.img is None:
+        warnings.warn("There is no image in the server. Be sure to send it before")
+        return {"status": "error", "message": "No image uploaded"}
+    
+    return
 
 
 ###############################################################################
@@ -270,9 +278,14 @@ async def upload_segment(
     """
     Receive a gzipped npy file from the client and set it as the segmentation in PromptManager.
     """
+    error = get_error_if_img_not_set()
+    if error is not None:
+        return error
+    
     file_bytes = await file.read()
     decompressed = gzip.decompress(file_bytes)
     arr = np.load(io.BytesIO(decompressed))
+
     PROMPT_MANAGER.set_segment(arr)
     return {"status": "ok"}
 
@@ -290,10 +303,11 @@ async def add_point_interaction(params: PointParams):
     """
     Receives a point (voxel_coord) + positive/negative. Updates the model & returns a binary mask.
     """
+    error = get_error_if_img_not_set()
+    if error is not None:
+        return error
+    
     t = time.time()
-    if PROMPT_MANAGER.img is None:
-        warnings.warn("There is no image in the server. Be sure to send it before")
-        return []
 
     seg_result = PROMPT_MANAGER.add_point_interaction(
         point_coordinates=params.voxel_coord, include_interaction=params.positive_click
@@ -322,10 +336,11 @@ async def add_bbox_interaction(params: BBoxParams):
     """
     Receives bounding box corners + positive/negative. Updates model & returns a mask.
     """
+    error = get_error_if_img_not_set()
+    if error is not None:
+        return error
+    
     t = time.time()
-    if PROMPT_MANAGER.img is None:
-        warnings.warn("There is no image in the server. Be sure to send it before")
-        return []
 
     seg_result = PROMPT_MANAGER.add_bbox_interaction(
         params.outer_point_one,
@@ -355,6 +370,10 @@ async def add_lasso_interaction(
     """
     Receives a gzipped npy mask + positive/negative. Treated as a 'lasso' 3D mask.
     """
+    error = get_error_if_img_not_set()
+    if error is not None:
+        return error
+    
     file_bytes = await file.read()
     mask, positive_click_bool = process_mask_and_click_input(file_bytes, positive_click)
 
@@ -383,6 +402,10 @@ async def add_scribble_interaction(
     """
     Receives a scribble mask + positive/negative. Updates model, returns updated segmentation.
     """
+    error = get_error_if_img_not_set()
+    if error is not None:
+        return error
+    
     # Read the uploaded file bytes and decompress.
     file_bytes = await file.read()
 
