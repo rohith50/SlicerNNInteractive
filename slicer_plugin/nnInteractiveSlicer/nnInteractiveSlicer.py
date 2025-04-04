@@ -238,11 +238,11 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             "xxhash": "xxhash==3.5.0",
             "requests_toolbelt": "requests_toolbelt==1.0.0",
             "SimpleITK": "SimpleITK==2.3.1",
-            "skimage": "skimage==0.22.0",
+            "skimage": "scikit-image==0.22.0",
         }
 
         for dependency in dependencies:
-            if self.check_dependency_installed(dependencies[dependency]):
+            if self.check_dependency_installed(dependency, dependencies[dependency]):
                 continue
             self.run_with_progress_bar(
                 self.pip_install_wrapper,
@@ -250,12 +250,12 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                 "Installing dependencies: %s" % dependency,
             )
 
-    def check_dependency_installed(self, module_name_and_version):
+    def check_dependency_installed(self, import_name, module_name_and_version):
         """
         Checks if a package is installed with the correct version.
         """
         module_name, module_version = module_name_and_version.split("==")
-        spec = importlib.util.find_spec(module_name)
+        spec = importlib.util.find_spec(import_name)
         if spec is None:
             return False
         else:
