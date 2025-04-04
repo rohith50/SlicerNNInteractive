@@ -54,6 +54,8 @@ nninteractive-slicer-server --host 0.0.0.0 --port 1527
 
 If you would like to use a different port, say `1627`, replace `--port 1527` with `--port 1627`.
 
+When starting the server, you can ignore the message `nnUNet_raw is not defined [...] how to set this up.`. Setting up these environment variables is not necessary when using `nnInteractiveSlicer`.
+
 ### Client side: Installation in 3D Slicer
 
 For now, `nnInteractiveSlicer` is not yet available in the Extensions Manager of 3D Slicer. So, currently, the following steps are still needed to install the `nnInteractiveSlicer` extension on the client side in 3D Slicer:
