@@ -68,7 +68,8 @@ For now, `nnInteractiveSlicer` is not yet available in the Extensions Manager of
 5. Locate the `nninteractive-slicer` folder you obtained in Step 1, and select the `slicer_plugin` folder and click "Open".
 6. Go to the Module dropdown menu again and go to `Segmentation` > `nnInteractiveSlicer`. This should result in the following view:
   ![First view of the Slicer extension](img/plugin_first_sight.png)
-7. Configure the right server settings by going to the `Configuration` tab. Then type in the URL of the server you set up in the [server side](#server-side) installation procedure. This should look something like `http://remote_host_name:1527` or, if you run the server locally, `http://localhost:1527`.
+	a) If you would like to `nnInteractiveSlicer` available in the top menu (as in the image above), go to `Edit` > `Application Settings` > `Modules` and drag `nnInteractiveSlicer` from the `Modules:` list to the `Favorite Modules:` list.
+8. Configure the right server settings by going to the `Configuration` tab. Then type in the URL of the server you set up in the [server side](#server-side) installation procedure. This should look something like `http://remote_host_name:1527` or, if you run the server locally, `http://localhost:1527`.
 
 ## Usage
 
