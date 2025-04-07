@@ -80,11 +80,13 @@ class nnInteractiveSlicer(ScriptedLoadableModule):
             translate("qSlicerAbstractCoreModule", "Segmentation")
         ]
         self.parent.dependencies = []  # List other modules if needed
-        self.parent.contributors = ["Coen de Vente"]
+        self.parent.contributors = ["Coen de Vente", "Kiran Vaidhya Venkadesh", "Bram van Ginneken", "Clara I. Sanchez"]
         self.parent.helpText = """
-            This is an 3D Slicer plugin for using nnInteractive.
+            This is an 3D Slicer extension for using nnInteractive.
+            
+            Read more about this plugin here: https://github.com/coendevente/nninteractive-slicer.
             """
-        self.parent.acknowledgementText = ""
+        self.parent.acknowledgementText = """When using nnInteractiveSlicer, please cite as described here: https://github.com/coendevente/nninteractive-slicer?tab=readme-ov-file#citation."""
 
 
 ###############################################################################
@@ -111,6 +113,10 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.scribble_segment_node_name = "ScribbleSegmentNode (do not touch)"
 
         self.add_segmentation_widget()
+
+        # Set up style sheets for selected/unselected buttons
+        self.selected_style = "background-color: #3498db; color: white"
+        self.unselected_style = ""
 
         self.prompt_types = {
             "point": {
@@ -167,10 +173,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         self.server = savedServer.rstrip("/")
 
         self.ui.Server.editingFinished.connect(self.update_server)
-
-        # Set up style sheets for selected/unselected buttons
-        self.selected_style = "background-color: #3498db; color: white; min-height: 28px; font-size: 13pt;"
-        self.unselected_style = "min-height: 28px; font-size: 13pt;"
 
         # Set initial prompt type
         self.current_prompt_type_positive = True
@@ -330,17 +332,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         if not skip_if_exists:
             self.remove_prompt_nodes()
 
-        unselected_style = """
-                    min-height: 30px;
-                    font-size: 13pt;
-        """
-
-        selected_style = """
-            min-height: 30px;
-            background-color: #3498db;  /* blue */
-            color: white;
-        """
-
         for prompt_name, prompt_type in self.prompt_types.items():
             if skip_if_exists and slicer.mrmlScene.GetFirstNodeByName(
                 prompt_type["name"]
@@ -369,10 +360,10 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             prompt_type["button"].setStyleSheet(
                 f"""
                 QPushButton {{
-                    {unselected_style}
+                    {self.unselected_style}
                 }}
                 QPushButton:checked {{
-                    {selected_style}
+                    {self.selected_style}
                 }}
             """
             )
@@ -403,10 +394,10 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             self.ui.pbInteractionScribble.setStyleSheet(
                 f"""
                 QPushButton {{
-                    {unselected_style}
+                    {self.unselected_style}
                 }}
                 QPushButton:checked {{
-                    {selected_style}
+                    {self.selected_style}
                 }}
             """
             )
