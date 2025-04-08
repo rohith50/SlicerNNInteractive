@@ -27,7 +27,7 @@ https://github.com/user-attachments/assets/c9f9ee0a-f74d-4907-aa21-484dcfd10948
 `nnInteractiveSlicer` needs to be set up on the server side and the client side. The server side needs relatively heavy compute, as described here:
 
 > You need a Linux or Windows computer with a Nvidia GPU. 10GB of VRAM is recommended. Small objects should work with <6GB. nnInteractive supports Python 3.10+
-> 
+>
 > -- [The nnInteractive README](https://github.com/MIC-DKFZ/nnInteractive?tab=readme-ov-file#prerequisites)
 
 The client machine _can_ be the same as the server machine.
@@ -36,7 +36,7 @@ The client machine _can_ be the same as the server machine.
 
 You can install the server side of `nnInteractiveSlicer` in two different ways:
 
-#### Option 1: Using Docker
+#### Option 1: Using Docker (only if the server runs on Linux)
 
 ```
 docker pull coendevente/nninteractive-slicer-server:latest
@@ -45,12 +45,44 @@ docker run --gpus all --rm -it -p 1527:1527 coendevente/nninteractive-slicer-ser
 
 This will make the server available under port `1527` on your machine. If you would like to use a different port, say `1627`, replace `-p 1527:1527` with `-p 1627:1527`.
 
-#### Option 2: Using `pip`
+#### Option 2: Using `pip` (on any operating systems)
+
+##### Prerequisite steps on Windows
+
+Python and a pytorch package with GPU support is required. You can follow the steps below to set these up on your computer for your user:
+
+1. Download pixi package manager by running this command in Terminal:
+
+```
+powershell -ExecutionPolicy ByPass -c "irm -useb https://pixi.sh/install.ps1 | iex"
+```
+
+2. Close the terminal and open a new Terminal to run the commands below to install Python and pytorch. The last step may take 10 minutes to complete, with no updates on the output for several minutes.
+
+```
+cd /d %localappdata%
+mkdir nninteractive-server
+cd nninteractive-server
+pixi init .
+pixi add python=3.12 pip
+cd .pixi\envs\default\Scripts
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+```
+
+To run the server again, there is no need to redo the steps above (install pixi and Python), just go to the install location:
+
+```
+cd /d %localappdata%\nninteractive-server\.pixi\envs\default\Scripts
+```
+
+##### Common steps for all operating systems
 
 ```
 pip install nninteractive-slicer-server
 nninteractive-slicer-server --host 0.0.0.0 --port 1527
 ```
+
+On Windows, if the firewall may ask permission to access the port then allow it.
 
 If you would like to use a different port, say `1627`, replace `--port 1527` with `--port 1627`.
 
@@ -79,7 +111,7 @@ Once you have completed the installation above, you can use `nnInteractiveSlicer
 
 2. Click one of the Interaction Tool buttons from the Interactive Prompts tab (point, bounding box, scribble, or lasso) and place your prompt in the image. This should result in a segmentation.
 
-3. If needed, you can correct the generated segmentation with positive and negative prompts (between which you can toggle using the Positive/Negative buttons). 
+3. If needed, you can correct the generated segmentation with positive and negative prompts (between which you can toggle using the Positive/Negative buttons).
 
 	a) Alternatively, you can reset the current segment using the "Reset segment button".
 
@@ -110,7 +142,7 @@ When using `nnInteractiveSlicer`, please cite:
 
 	[![arXiv](https://img.shields.io/badge/arXiv-2503.08373-b31b1b.svg)](https://arxiv.org/abs/2503.08373)
 
-2. The `nnInteractiveSlicer` paper: 
+2. The `nnInteractiveSlicer` paper:
 	> Available on arXiv soon (you can already read it here: https://github.com/coendevente/nninteractive-slicer/blob/paper/paper.preprint.pdf)
 
 	[![Static Badge](https://img.shields.io/badge/Paper-PDF-red)](https://github.com/coendevente/nninteractive-slicer/blob/paper/paper.preprint.pdf)
