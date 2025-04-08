@@ -4,12 +4,11 @@ project(nnInteractiveSlicer)
 
 #-----------------------------------------------------------------------------
 # Extension meta-information
-set(EXTENSION_CATEGORY "Segmentation")
-set(EXTENSION_CONTRIBUTORS "Coen de Vente")
-set(EXTENSION_DESCRIPTION "A 3D Slicer plugin for nnInteractive")
-set(EXTENSION_ICONURL "https://www.example.com/Slicer/Extensions/nnInteractiveSlicer.png")
-set(EXTENSION_HOMEPAGE "https://www.slicer.org/wiki/Documentation/Nightly/Extensions/nnInteractiveSlicer")
-set(EXTENSION_SCREENSHOTURLS "https://www.example.com/Slicer/Extensions/nnInteractiveSlicer/Screenshots/1.png")
+set(EXTENSION_HOMEPAGE "https://github.com/coendevente/nninteractive-slicer")
+set(EXTENSION_CONTRIBUTORS "Coen de Vente (University of Amsterdam)")
+set(EXTENSION_DESCRIPTION "Deep learning-based framework for interactive segmentation of 3D images. The extensuini is available under a Apache-2.0 license, but the weights that are being downloaded when running the nnInteractiveSlicer server are available under a Creative Commons Attribution Non Commercial Share Alike 4.0 license, as described in the original nnInteractive respository.")
+set(EXTENSION_ICONURL "https://raw.githubusercontent.com/coendevente/nninteractive-slicer/main/slicer_plugin/nnInteractiveSlicer/Resources/Icons/nnInteractiveSlicer.png")
+set(EXTENSION_SCREENSHOTURLS "https://raw.githubusercontent.com/coendevente/nninteractive-slicer/main/img/plugin_first_sight.png")
 set(EXTENSION_DEPENDS "NA") # Specified as a list or "NA" if no dependencies
 
 #-----------------------------------------------------------------------------

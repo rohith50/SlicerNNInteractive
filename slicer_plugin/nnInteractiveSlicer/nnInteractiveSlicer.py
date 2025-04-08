@@ -75,7 +75,7 @@ class nnInteractiveSlicer(ScriptedLoadableModule):
     def __init__(self, parent):
         ScriptedLoadableModule.__init__(self, parent)
 
-        self.parent.title = _("nnInteractiveSlicer")
+        self.parent.title = _("nnInteractive")
         self.parent.categories = [
             translate("qSlicerAbstractCoreModule", "Segmentation")
         ]
@@ -83,7 +83,7 @@ class nnInteractiveSlicer(ScriptedLoadableModule):
         self.parent.contributors = ["Coen de Vente", "Kiran Vaidhya Venkadesh", "Bram van Ginneken", "Clara I. Sanchez"]
         self.parent.helpText = """
             This is an 3D Slicer extension for using nnInteractive.
-            
+
             Read more about this plugin here: https://github.com/coendevente/nninteractive-slicer.
             """
         self.parent.acknowledgementText = """When using nnInteractiveSlicer, please cite as described here: https://github.com/coendevente/nninteractive-slicer?tab=readme-ov-file#citation."""
@@ -1119,7 +1119,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                 error_message = "It seems the Server URL is unreachable!"
 
             error_message += f"""
-            
+
 You can configure it in the 'Configuration' menu of the nnInteractiveSlicer plugin.
 
 This is the error: {e}."""
