@@ -24,7 +24,7 @@ from PythonQt.QtGui import QMessageBox
 ###############################################################################
 
 
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 
 def debug_print(*args):
@@ -1111,7 +1111,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         error_message = None
         try:
             response = requests.post(*args, **kwargs)
-            print('response:', response)
+            debug_print('response:', response)
         except requests.exceptions.MissingSchema as e:
             if self.server == "":
                 error_message = "It seems you have not set the server URL yet!"
@@ -1138,13 +1138,13 @@ This is the error: {e}."""
                 resp_json = response.json()
                 if resp_json.get("status") == "error":
                     if "No image uploaded" in resp_json.get("message", ""):
-                        print("No image has been uploaded to the server. Please upload an image first.")
+                        debug_print("No image has been uploaded to the server. Please upload an image first.")
                         self.upload_image_to_server()
                         self.upload_segment_to_server()
                         return self.request_to_server(*args, **kwargs)
                     else:
                         error_message = f"Server error: {resp_json.get('message', 'Unknown error')}"
-        print('1157 took', time.time() - t0)
+        debug_print('1157 took', time.time() - t0)
 
         if error_message is not None:
             QMessageBox.warning(slicer.util.mainWindow(), "Error", error_message)
