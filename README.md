@@ -110,7 +110,7 @@ When using `nnInteractiveSlicer`, please cite:
 
 	[![arXiv](https://img.shields.io/badge/arXiv-2503.08373-b31b1b.svg)](https://arxiv.org/abs/2503.08373)
 
-2. The nnInteractiveSlicer paper: 
+2. The `nnInteractiveSlicer` paper: 
 	> Available on arXiv soon (you can already read it here: https://github.com/coendevente/nninteractive-slicer/blob/paper/paper.preprint.pdf)
 
 	[![Static Badge](https://img.shields.io/badge/Paper-PDF-red)](https://github.com/coendevente/nninteractive-slicer/blob/paper/paper.preprint.pdf)
