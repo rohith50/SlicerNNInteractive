@@ -45,7 +45,7 @@ docker run --gpus all --rm -it -p 1527:1527 coendevente/nninteractive-slicer-ser
 
 This will make the server available under port `1527` on your machine. If you would like to use a different port, say `1627`, replace `-p 1527:1527` with `-p 1627:1527`.
 
-#### Option 2: Using `pip` (on any operating systems)
+#### Option 2: Using `pip` (on Windows or Linux)
 
 ##### Prerequisite steps on Windows
 
