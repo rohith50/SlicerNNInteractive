@@ -974,12 +974,17 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
             self.get_selected_segmentation_node_and_segment_id()
         )
 
-        slicer.util.updateSegmentBinaryLabelmapFromArray(
-            segmentation_mask,
-            segmentationNode,
-            selectedSegmentID,
-            self.get_volume_node(),
-        )
+        was_3d_shown = segmentationNode.GetSegmentation().ContainsRepresentation(slicer.vtkSegmentationConverter.GetSegmentationClosedSurfaceRepresentationName())
+
+        with slicer.util.RenderBlocker():  # avoid flashing of 3D view
+            slicer.util.updateSegmentBinaryLabelmapFromArray(
+                segmentation_mask,
+                segmentationNode,
+                selectedSegmentID,
+                self.get_volume_node(),
+            )
+            if was_3d_shown:
+                segmentationNode.CreateClosedSurfaceRepresentation()
 
         # Mark the segmentation as modified so the UI updates
         segmentationNode.Modified()
