@@ -1096,31 +1096,26 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         Wraps requests.post in a try/except and shows error in pop up windows if necessary.
         """
 
-        error_message = None
-        try:
-            response = requests.post(*args, **kwargs)
-            debug_print('response:', response)
-        except requests.exceptions.MissingSchema as e:
-            if self.server == "":
-                error_message = "It seems you have not set the server URL yet!"
-            else:
-                error_message = "It seems the Server URL is unreachable!"
+        with slicer.util.tryWithErrorDisplay(_("Segmentation failed."), waitCursor=True):
 
-            error_message += f"""
+            error_message = None
+            try:
+                response = requests.post(*args, **kwargs)
+                debug_print('response:', response)
+            except requests.exceptions.MissingSchema as e:
+                response = None
+                if self.server == "":
+                    raise RuntimeError("It seems you have not set the server URL yet. You can configure it in the 'Configuration' tab.")
+                else:
+                    raise RuntimeError(f"Server URL '{self.server}' is unreachable. You can edit the URL in the 'Configuration' tab.")
 
-You can configure it in the 'Configuration' menu of the nnInteractiveSlicer plugin.
+            if response.status_code != 200:
+                status_code = response.status_code
+                response = None
+                raise RuntimeError(f"Something has gone wrong with your request (Status code {status_code}).")
 
-This is the error: {e}."""
-        except Exception as e:
-            error_message = f"""Your request was unsuccessful.
-
-This is the error: {e}."""
-        if error_message is None and response.status_code != 200:
-            error_message = f"""Something seems to have gone wrong with your request (Status code {response.status_code})."""
-
-        t0 = time.time()
-        # Try to parse JSON and check for a specific error.
-        if error_message is None:
+            t0 = time.time()
+            # Try to parse JSON and check for a specific error.
             content_type = response.headers.get("Content-Type", "")
             if "application/json" in content_type:
                 resp_json = response.json()
@@ -1131,12 +1126,10 @@ This is the error: {e}."""
                         self.upload_segment_to_server()
                         return self.request_to_server(*args, **kwargs)
                     else:
-                        error_message = f"Server error: {resp_json.get('message', 'Unknown error')}"
-        debug_print('1157 took', time.time() - t0)
+                        response = None
+                        raise RuntimeError(f"Server error: {resp_json.get('message', 'Unknown error')}")
 
-        if error_message is not None:
-            QMessageBox.warning(slicer.util.mainWindow(), "Error", error_message)
-            return None
+            debug_print('1157 took', time.time() - t0)
 
         return response
 
