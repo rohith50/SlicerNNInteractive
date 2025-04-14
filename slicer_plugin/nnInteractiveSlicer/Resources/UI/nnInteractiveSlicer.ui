@@ -180,7 +180,7 @@
                  <string>Place BBox prompt</string>
                 </property>
                 <property name="text">
-                 <string>&amp;BBox</string>
+                 <string>&amp;Bounding Box</string>
                 </property>
                 <property name="checkable">
                  <bool>true</bool>
