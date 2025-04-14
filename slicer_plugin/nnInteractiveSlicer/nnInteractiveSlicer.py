@@ -1109,6 +1109,9 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
                     raise RuntimeError("It seems you have not set the server URL yet. You can configure it in the 'Configuration' tab.")
                 else:
                     raise RuntimeError(f"Server URL '{self.server}' is unreachable. You can edit the URL in the 'Configuration' tab.")
+            except requests.exceptions.ConnectionError as e:
+                response = None
+                raise RuntimeError(f"Failed to connect to server '{self.server}'. Please make sure the server is running and check the server URL in the 'Configuration' tab.")
 
             if response.status_code != 200:
                 status_code = response.status_code
@@ -1188,11 +1191,12 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
             encoder = MultipartEncoder(fields=files)
             monitor = MultipartEncoderMonitor(encoder, my_callback)
 
-            result = self.request_to_server(
-                url, data=monitor, headers={"Content-Type": monitor.content_type}
-            )
-
-            slicer.progress_window.close()
+            try:
+                result = self.request_to_server(
+                    url, data=monitor, headers={"Content-Type": monitor.content_type}
+                )
+            finally:
+                slicer.progress_window.close()
 
             return result
         except Exception as e:
