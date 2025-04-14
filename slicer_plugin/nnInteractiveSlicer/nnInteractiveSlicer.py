@@ -1236,20 +1236,21 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
     def get_volume_node(self):
         """
-        Retrieves the current active volume node, or the first found scalar volume if none is active.
+        Retrieves the current source volume node chosen in the segment editor widget.
+        If nothing is set then use the most recently added scalar volume
         """
-        selectionNode = slicer.app.applicationLogic().GetSelectionNode()
-        activeVolumeID = selectionNode.GetActiveVolumeID()
-        if activeVolumeID:
-            volumeNode = slicer.mrmlScene.GetNodeByID(activeVolumeID)
-            if volumeNode:
-                return volumeNode
+        # Get volume node from segment editor widget
+        volumeNode = self.editor_widget.sourceVolumeNode()
 
-        volumeNodes = slicer.util.getNodesByClass("vtkMRMLScalarVolumeNode")
-        if volumeNodes:
-            return list(volumeNodes.values())[0]
+        if not volumeNode:
+            # Get the most recently added volume node
+            volumeNodes = slicer.util.getNodesByClass("vtkMRMLScalarVolumeNode")
+            if volumeNodes:
+                volumeNode = volumeNodes[-1]
+            # Show this volume node in the segment editor widget
+            self.editor_widget.setSourceVolumeNode(volumeNode)
 
-        return None
+        return volumeNode
 
     def image_changed(self, do_prev_image_update=True):
         """
