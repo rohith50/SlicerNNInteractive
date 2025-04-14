@@ -977,6 +977,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         was_3d_shown = segmentationNode.GetSegmentation().ContainsRepresentation(slicer.vtkSegmentationConverter.GetSegmentationClosedSurfaceRepresentationName())
 
         with slicer.util.RenderBlocker():  # avoid flashing of 3D view
+            self.editor_widget.saveStateForUndo()
             slicer.util.updateSegmentBinaryLabelmapFromArray(
                 segmentation_mask,
                 segmentationNode,
