@@ -16,6 +16,7 @@ import vtk
 from slicer.i18n import tr as _
 from slicer.i18n import translate
 from slicer.ScriptedLoadableModule import *
+from slicer.util import VTKObservationMixin
 from PythonQt.QtGui import QMessageBox
 
 
@@ -94,10 +95,15 @@ class nnInteractiveSlicer(ScriptedLoadableModule):
 ###############################################################################
 
 
-class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
+class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     ###############################################################################
     # Setup and initialization functions
     ###############################################################################
+
+    def __init__(self, parent=None) -> None:
+        """Called when the user opens the module the first time and the widget is initialized."""
+        ScriptedLoadableModuleWidget.__init__(self, parent)
+        VTKObservationMixin.__init__(self)  # needed for parameter node observation
 
     def setup(self):
         """
@@ -125,7 +131,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                 "name": "PointPrompt",
                 "display_node_markup_function": self.display_node_markup_point,
                 "on_placed_function": self.on_point_placed,
-                "place_widget": self.ui.pointPlaceWidget,
                 "button": self.ui.pbInteractionPoint,
                 "button_text": self.ui.pbInteractionPoint.text,
             },
@@ -135,7 +140,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                 "name": "BBoxPrompt",
                 "display_node_markup_function": self.display_node_markup_bbox,
                 "on_placed_function": self.on_bbox_placed,
-                "place_widget": self.ui.bboxPlaceWidget,
                 "button": self.ui.pbInteractionBBox,
                 "button_text": self.ui.pbInteractionBBox.text,
             },
@@ -145,7 +149,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                 "name": "LassoPrompt",
                 "display_node_markup_function": self.display_node_markup_lasso,
                 "on_placed_function": self.on_lasso_placed,
-                "place_widget": self.ui.lassoPlaceWidget,
                 "button": self.ui.pbInteractionLasso,
                 "button_text": self.ui.pbInteractionLasso.text,
             },
@@ -191,12 +194,13 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             self.on_prompt_type_negative_clicked
         )
 
+        self.ui.pbInteractionLassoCancel.setVisible(False)
         self.ui.pbInteractionScribble.clicked.connect(self.on_scribble_clicked)
 
-        self.ui.pbInteractionScribble.setCheckable(True)
-        self.ui.pbInteractionLasso.clicked.connect(self.on_lasso_clicked)
+        self.ui.pbInteractionLassoCancel.clicked.connect(self.on_lasso_cancel_clicked)
 
-        self.interaction_tool_mode = None
+        self.addObserver(slicer.app.applicationLogic().GetInteractionNode(), 
+            slicer.vtkMRMLInteractionNode.InteractionModeChangedEvent, self.on_interaction_node_modified)
 
     def setup_shortcuts(self):
         """
@@ -311,6 +315,8 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         """
         Clean up resources when the module is closed.
         """
+        self.removeObservers()
+
         if hasattr(self, "_qt_event_filters"):
             for slice_view, event_filter in self._qt_event_filters:
                 slice_view.removeEventFilter(event_filter)
@@ -345,18 +351,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             display_node = node.GetDisplayNode()
             prompt_type["display_node_markup_function"](display_node)
 
-            place_widget = prompt_type["place_widget"]
-            place_widget.setMRMLScene(slicer.mrmlScene)
-            place_widget.setCurrentNode(node)
-
-            place_button = place_widget.placeButton()
-            place_button.setText(prompt_type["button_text"])
-            place_button.setToolButtonStyle(qt.Qt.ToolButtonTextOnly)
-
-            place_button = place_widget.placeButton()
-
-            place_button.setCheckable(True)
-
             prompt_type["button"].setStyleSheet(
                 f"""
                 QPushButton {{
@@ -368,8 +362,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             """
             )
 
-            place_widget.hide()
-
             self.prev_caller = None
 
             if prompt_type["on_placed_function"] is not None:
@@ -379,9 +371,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
                 )
 
             prompt_type["node"] = node
-            prompt_type["button"].clicked.connect(
-                self.get_on_button_clicked_function(place_widget, prompt_type["button"])
-            )
+            prompt_type["button"].clicked.connect(lambda checked, prompt_name=prompt_name: self.on_place_button_clicked(checked, prompt_name)) 
             self.all_prompt_buttons[prompt_name] = prompt_type["button"]
 
         if (
@@ -470,7 +460,29 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         for prompt_type in list(self.prompt_types.values()):
             _remove(prompt_type["name"])
 
+        self.ui.pbInteractionLassoCancel.setVisible(False)
+
         _remove(self.scribble_segment_node_name)
+
+    def on_interaction_node_modified(self, caller, event):
+        """
+        Deselect prompt button if interaction mode is not place point anymore
+        """
+
+        interactionNode = slicer.app.applicationLogic().GetInteractionNode()
+        selectionNode = slicer.app.applicationLogic().GetSelectionNode()
+        for prompt_type in self.prompt_types.values():
+            if interactionNode.GetCurrentInteractionMode() != slicer.vtkMRMLInteractionNode.Place:
+                if prompt_type["name"] == "LassoPrompt" and (self.ui.pbInteractionLasso.isChecked()):
+                    self.submit_lasso_if_present()
+                prompt_type["button"].setChecked(False)
+            elif interactionNode.GetCurrentInteractionMode() == slicer.vtkMRMLInteractionNode.Place:
+                placingThisNode = (selectionNode.GetActivePlaceNodeID() == prompt_type["node"].GetID())
+                prompt_type["button"].setChecked(placingThisNode)
+
+        # Stop scribble if placing markup
+        if interactionNode.GetCurrentInteractionMode() == slicer.vtkMRMLInteractionNode.Place:
+            self.ui.pbInteractionScribble.setChecked(False)
 
     def remove_all_but_last_prompt(self):
         """
@@ -504,30 +516,20 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             for i in range(n):
                 node.RemoveNthControlPoint(0)
 
-    def get_on_button_clicked_function(self, place_widget, this_button):
-        """
-        Returns a function that toggles place mode (for the Markups) and ensures
-        other buttons are unselected.
-        """
+    def on_place_button_clicked(self, checked, prompt_name):
+        self.setup_prompts(skip_if_exists=True)
 
-        def on_button_clicked(checked=False):
-            self.hide_all_but_this_button(this_button)
-            self.setup_prompts(skip_if_exists=True)
-            place_widget.setPlaceModeEnabled(checked)
-
-        return on_button_clicked
-
-    def hide_all_but_this_button(self, this_button):
-        """
-        Deselect every prompt button except `this_button` (usually the one
-        the user just clicked).
-        """
-        for button in self.all_prompt_buttons.values():
-            if button != this_button:
-                button.setChecked(False)
-
-        if this_button != self.all_prompt_buttons["lasso"]:
-            self.set_lasso_unselected_text()
+        interactionNode = slicer.app.applicationLogic().GetInteractionNode()
+        if checked:
+            selectionNode = slicer.app.applicationLogic().GetSelectionNode()
+            selectionNode.SetReferenceActivePlaceNodeClassName(self.prompt_types[prompt_name]["node_class"])
+            selectionNode.SetActivePlaceNodeID(self.prompt_types[prompt_name]["node"].GetID())
+            interactionNode.SetPlaceModePersistence(1)
+            interactionNode.SetCurrentInteractionMode(interactionNode.Place)
+        else:
+            if prompt_name == "lasso":
+                self.submit_lasso_if_present()
+            interactionNode.SetCurrentInteractionMode(interactionNode.ViewTransform)
 
     def display_node_markup_point(self, display_node):
         """
@@ -588,7 +590,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         volume_node = self.get_volume_node()
         if volume_node:
             self.point_prompt(xyz=xyz, positive_click=self.is_positive)
-            qt.QTimer.singleShot(0, self.ui.pointPlaceWidget.placeButton().click)
 
     @ensure_synched
     def point_prompt(self, xyz=None, positive_click=False):
@@ -618,7 +619,6 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         Every time a control point is placed/moved for the bounding box ROI node.
         Once two corners are placed, we send the bounding box to the server.
         """
-        placeButton = self.ui.bboxPlaceWidget.placeButton()
         xyz = self.xyz_from_caller(caller)
 
         if self.prev_caller is not None and caller.GetID() == self.prev_caller.GetID():
@@ -646,7 +646,8 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
 
                 def _next():
                     self.setup_prompts()
-                    qt.QTimer.singleShot(0, placeButton.click)
+                    # Start placing a new box
+                    self.ui.pbInteractionBBox.click()
 
                 qt.QTimer.singleShot(0, _next)
 
@@ -682,19 +683,17 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
     #
     def on_lasso_placed(self, caller, event):
         """
-        Called whenever a new point is added to the lasso. We update the button text
-        so the user knows they must press Shift+L to finish the lasso.
+        Called whenever a new point is added to the lasso.
         """
-        self.set_lasso_selected_text()
+        pointsDefined = self.prompt_types["lasso"]["node"].GetNumberOfControlPoints() > 0
+        self.ui.pbInteractionLassoCancel.setVisible(pointsDefined)
 
-    def on_lasso_clicked(self, checked=False):
+    def on_lasso_cancel_clicked(self):
         """
-        If the user toggles the lasso button, update the text in the button accordingly.
+        Called when the user clicks the cancel button for the lasso.
         """
-        if checked:
-            self.set_lasso_selected_text()
-        else:
-            self.set_lasso_unselected_text()
+        self.prompt_types["lasso"]["node"].RemoveAllControlPoints()
+        self.ui.pbInteractionLassoCancel.setVisible(False)
 
     def submit_lasso_if_present(self):
         """
@@ -717,28 +716,10 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
 
             def _next():
                 self.setup_prompts()
-                qt.QTimer.singleShot(0, self.ui.lassoPlaceWidget.placeButton().click)
-                self.ui.lassoPlaceWidget.placeButton().setText(
-                    self.prompt_types["lasso"]["button_text"]
-                )
+                # Start placing a new lasso
+                self.ui.pbInteractionLasso.click()
 
             qt.QTimer.singleShot(0, _next)
-
-    def set_lasso_selected_text(self):
-        """
-        Handles text on button when lasso button is selected.
-        """
-        self.ui.pbInteractionLasso.setText(
-            f"{self.prompt_types['lasso']['button_text']} [Hit Shift+L to finish]"
-        )
-
-    def set_lasso_unselected_text(self):
-        """
-        Handles text on button when lasso button is unselected.
-        """
-        self.ui.pbInteractionLasso.setText(
-            f"{self.prompt_types['lasso']['button_text']}"
-        )
 
     #
     #  -- Scribble
@@ -749,7 +730,9 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         scribble segment (bg or fg, depending on prompt type).
         """
         self.setup_prompts(skip_if_exists=True)
-        self.hide_all_but_this_button(self.ui.pbInteractionScribble)
+
+        interaction_node = slicer.app.applicationLogic().GetInteractionNode()
+        interaction_node.SetCurrentInteractionMode(interaction_node.ViewTransform)
 
         if not checked:
             # Deactivate paint effect
@@ -991,12 +974,18 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
             self.get_selected_segmentation_node_and_segment_id()
         )
 
-        slicer.util.updateSegmentBinaryLabelmapFromArray(
-            segmentation_mask,
-            segmentationNode,
-            selectedSegmentID,
-            self.get_volume_node(),
-        )
+        was_3d_shown = segmentationNode.GetSegmentation().ContainsRepresentation(slicer.vtkSegmentationConverter.GetSegmentationClosedSurfaceRepresentationName())
+
+        with slicer.util.RenderBlocker():  # avoid flashing of 3D view
+            self.editor_widget.saveStateForUndo()
+            slicer.util.updateSegmentBinaryLabelmapFromArray(
+                segmentation_mask,
+                segmentationNode,
+                selectedSegmentID,
+                self.get_volume_node(),
+            )
+            if was_3d_shown:
+                segmentationNode.CreateClosedSurfaceRepresentation()
 
         # Mark the segmentation as modified so the UI updates
         segmentationNode.Modified()
@@ -1108,31 +1097,29 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget):
         Wraps requests.post in a try/except and shows error in pop up windows if necessary.
         """
 
-        error_message = None
-        try:
-            response = requests.post(*args, **kwargs)
-            debug_print('response:', response)
-        except requests.exceptions.MissingSchema as e:
-            if self.server == "":
-                error_message = "It seems you have not set the server URL yet!"
-            else:
-                error_message = "It seems the Server URL is unreachable!"
+        with slicer.util.tryWithErrorDisplay(_("Segmentation failed."), waitCursor=True):
 
-            error_message += f"""
+            error_message = None
+            try:
+                response = requests.post(*args, **kwargs)
+                debug_print('response:', response)
+            except requests.exceptions.MissingSchema as e:
+                response = None
+                if self.server == "":
+                    raise RuntimeError("It seems you have not set the server URL yet. You can configure it in the 'Configuration' tab.")
+                else:
+                    raise RuntimeError(f"Server URL '{self.server}' is unreachable. You can edit the URL in the 'Configuration' tab.")
+            except requests.exceptions.ConnectionError as e:
+                response = None
+                raise RuntimeError(f"Failed to connect to server '{self.server}'. Please make sure the server is running and check the server URL in the 'Configuration' tab.")
 
-You can configure it in the 'Configuration' menu of the nnInteractiveSlicer plugin.
+            if response.status_code != 200:
+                status_code = response.status_code
+                response = None
+                raise RuntimeError(f"Something has gone wrong with your request (Status code {status_code}).")
 
-This is the error: {e}."""
-        except Exception as e:
-            error_message = f"""Your request was unsuccessful.
-
-This is the error: {e}."""
-        if error_message is None and response.status_code != 200:
-            error_message = f"""Something seems to have gone wrong with your request (Status code {response.status_code})."""
-
-        t0 = time.time()
-        # Try to parse JSON and check for a specific error.
-        if error_message is None:
+            t0 = time.time()
+            # Try to parse JSON and check for a specific error.
             content_type = response.headers.get("Content-Type", "")
             if "application/json" in content_type:
                 resp_json = response.json()
@@ -1143,12 +1130,10 @@ This is the error: {e}."""
                         self.upload_segment_to_server()
                         return self.request_to_server(*args, **kwargs)
                     else:
-                        error_message = f"Server error: {resp_json.get('message', 'Unknown error')}"
-        debug_print('1157 took', time.time() - t0)
+                        response = None
+                        raise RuntimeError(f"Server error: {resp_json.get('message', 'Unknown error')}")
 
-        if error_message is not None:
-            QMessageBox.warning(slicer.util.mainWindow(), "Error", error_message)
-            return None
+            debug_print('1157 took', time.time() - t0)
 
         return response
 
@@ -1206,11 +1191,12 @@ This is the error: {e}."""
             encoder = MultipartEncoder(fields=files)
             monitor = MultipartEncoderMonitor(encoder, my_callback)
 
-            result = self.request_to_server(
-                url, data=monitor, headers={"Content-Type": monitor.content_type}
-            )
-
-            slicer.progress_window.close()
+            try:
+                result = self.request_to_server(
+                    url, data=monitor, headers={"Content-Type": monitor.content_type}
+                )
+            finally:
+                slicer.progress_window.close()
 
             return result
         except Exception as e:
