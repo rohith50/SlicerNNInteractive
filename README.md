@@ -93,12 +93,12 @@ When starting the server, you can ignore the message `nnUNet_raw is not defined 
 
 For now, `SlicerNNInteractive` is not yet available in the Extensions Manager of 3D Slicer. So, currently, the following steps are still needed to install the `SlicerNNInteractive` extension on the client side in 3D Slicer:
 
-1. `git clone git@github.com:coendevente/nninteractive-slicer.git` (or download the current project as a `.zip` file from GitHub).
+1. `git clone git@github.com:coendevente/SlicerNNInteractive.git` (or download the current project as a `.zip` file from GitHub).
 2. Open 3D Slicer and click the Module dropdown menu in the top left of the 3D Slicer window:
 	![Slicer dropdown menu](img/dropdown.png)
 3. Go to `Developer Tools` > `Extension Wizard`.
 4. Click `Select Extension`.
-5. Locate the `nninteractive-slicer` folder you obtained in Step 1, and select the `slicer_plugin` folder.
+5. Locate the `SlicerNNInteractive` folder you obtained in Step 1, and select the `slicer_plugin` folder.
 6. Go to the Module dropdown menu again and go to `Segmentation` > `SlicerNNInteractive`. This should result in the following view:
   ![First view of the Slicer extension](img/plugin_first_sight.png)
 	a) If you would like to have `SlicerNNInteractive` available in the top menu (as in the image above), go to `Edit` > `Application Settings` > `Modules` and drag `SlicerNNInteractive` from the `Modules:` list to the `Favorite Modules:` list.
