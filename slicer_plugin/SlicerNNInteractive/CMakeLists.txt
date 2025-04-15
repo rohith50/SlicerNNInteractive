@@ -1,4 +1,4 @@
-set(MODULE_NAME "nnInteractiveSlicer")
+set(MODULE_NAME "SlicerNNInteractive")
 
 #-----------------------------------------------------------------------------
 set(MODULE_PYTHON_SCRIPTS

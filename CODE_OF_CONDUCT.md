@@ -1,4 +1,4 @@
-# Code of Conduct - nnInteractiveSlicer
+# Code of Conduct - SlicerNNInteractive
 
 ## Our Pledge
 

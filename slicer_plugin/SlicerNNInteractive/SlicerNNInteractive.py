@@ -68,11 +68,11 @@ def ensure_synched(func):
 
 
 ###############################################################################
-# nnInteractiveSlicer
+# SlicerNNInteractive
 ###############################################################################
 
 
-class nnInteractiveSlicer(ScriptedLoadableModule):
+class SlicerNNInteractive(ScriptedLoadableModule):
     def __init__(self, parent):
         ScriptedLoadableModule.__init__(self, parent)
 
@@ -87,15 +87,15 @@ class nnInteractiveSlicer(ScriptedLoadableModule):
 
             Read more about this plugin here: https://github.com/coendevente/nninteractive-slicer.
             """
-        self.parent.acknowledgementText = """When using nnInteractiveSlicer, please cite as described here: https://github.com/coendevente/nninteractive-slicer?tab=readme-ov-file#citation."""
+        self.parent.acknowledgementText = """When using SlicerNNInteractive, please cite as described here: https://github.com/coendevente/nninteractive-slicer?tab=readme-ov-file#citation."""
 
 
 ###############################################################################
-# nnInteractiveSlicerWidget
+# SlicerNNInteractiveWidget
 ###############################################################################
 
 
-class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
+class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     ###############################################################################
     # Setup and initialization functions
     ###############################################################################
@@ -113,7 +113,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
         self.install_dependencies()
 
-        ui_widget = slicer.util.loadUI(self.resourcePath("UI/nnInteractiveSlicer.ui"))
+        ui_widget = slicer.util.loadUI(self.resourcePath("UI/SlicerNNInteractive.ui"))
         self.layout.addWidget(ui_widget)
         self.ui = slicer.util.childWidgetVariables(ui_widget)
         self.scribble_segment_node_name = "ScribbleSegmentNode (do not touch)"
@@ -171,7 +171,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         self.ui.uploadProgressGroup.setVisible(False)
 
         # Load the saved server URL (default to an empty string if not set)
-        savedServer = slicer.util.settingsValue("nnInteractiveSlicer/server", "")
+        savedServer = slicer.util.settingsValue("SlicerNNInteractive/server", "")
         self.ui.Server.text = savedServer
         self.server = savedServer.rstrip("/")
 
@@ -1089,7 +1089,7 @@ class nnInteractiveSlicerWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         """
         self.server = self.ui.Server.text.rstrip("/")
         settings = qt.QSettings()
-        settings.setValue("nnInteractiveSlicer/server", self.server)
+        settings.setValue("SlicerNNInteractive/server", self.server)
         debug_print(f"Server URL updated and saved: {self.server}")
 
     def request_to_server(self, *args, **kwargs):
