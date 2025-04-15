@@ -85,9 +85,9 @@ class SlicerNNInteractive(ScriptedLoadableModule):
         self.parent.helpText = """
             This is an 3D Slicer extension for using nnInteractive.
 
-            Read more about this plugin here: https://github.com/coendevente/nninteractive-slicer.
+            Read more about this plugin here: https://github.com/coendevente/SlicerNNInteractive.
             """
-        self.parent.acknowledgementText = """When using SlicerNNInteractive, please cite as described here: https://github.com/coendevente/nninteractive-slicer?tab=readme-ov-file#citation."""
+        self.parent.acknowledgementText = """When using SlicerNNInteractive, please cite as described here: https://github.com/coendevente/SlicerNNInteractive?tab=readme-ov-file#citation."""
 
 
 ###############################################################################

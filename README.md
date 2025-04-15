@@ -143,9 +143,9 @@ When using `SlicerNNInteractive`, please cite:
 	[![arXiv](https://img.shields.io/badge/arXiv-2503.08373-b31b1b.svg)](https://arxiv.org/abs/2503.08373)
 
 2. The `SlicerNNInteractive` paper:
-	> Available on arXiv soon (you can already read it here: https://github.com/coendevente/nninteractive-slicer/blob/paper/paper.preprint.pdf)
+	> Available on arXiv soon (you can already read it here: https://github.com/coendevente/SlicerNNInteractive/blob/paper/paper.preprint.pdf)
 
-	[![Static Badge](https://img.shields.io/badge/Paper-PDF-red)](https://github.com/coendevente/nninteractive-slicer/blob/paper/paper.preprint.pdf)
+	[![Static Badge](https://img.shields.io/badge/Paper-PDF-red)](https://github.com/coendevente/SlicerNNInteractive/blob/paper/paper.preprint.pdf)
 
 ## License
 This repository is available under a Apache-2.0 license (see [here](LICENSE)). **Please note** that the weights that are being downloaded when running the `SlicerNNInteractive` server are available under a `Creative Commons Attribution Non Commercial Share Alike 4.0` license, as described in the original nnInteractive respository [here](https://github.com/MIC-DKFZ/nnInteractive/tree/master?tab=readme-ov-file#license).
