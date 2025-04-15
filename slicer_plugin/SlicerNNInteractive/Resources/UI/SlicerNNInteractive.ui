@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>nnInteractiveSlicer</class>
- <widget class="qMRMLWidget" name="nnInteractiveSlicer">
+ <class>nnInteractive</class>
+ <widget class="qMRMLWidget" name="nnInteractive">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -24,7 +24,7 @@
         </font>
        </property>
        <property name="text">
-        <string>nnInteractiveSlicer</string>
+        <string>nnInteractive</string>
        </property>
       </widget>
      </item>
