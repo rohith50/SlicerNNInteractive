@@ -143,9 +143,9 @@ When using `SlicerNNInteractive`, please cite:
 	[![arXiv](https://img.shields.io/badge/arXiv-2503.08373-b31b1b.svg)](https://arxiv.org/abs/2503.08373)
 
 2. The `SlicerNNInteractive` paper:
-	> Available on arXiv soon (you can already read it here: https://github.com/coendevente/SlicerNNInteractive/blob/paper/paper.preprint.pdf)
+	> de Vente, C., Venkadesh, K.V., van Ginneken, B., Sánchez, C.I. (2025). nnInteractiveSlicer: A 3D Slicer extension for nnInteractive. https://arxiv.org/abs/2504.07991
 
-	[![Static Badge](https://img.shields.io/badge/Paper-PDF-red)](https://github.com/coendevente/SlicerNNInteractive/blob/paper/paper.preprint.pdf)
+	[![arXiv](https://img.shields.io/badge/arXiv-2504.07991-b31b1b.svg)](https://arxiv.org/abs/2504.07991)
 
 ## License
 This repository is available under a Apache-2.0 license (see [here](LICENSE)). **Please note** that the weights that are being downloaded when running the `SlicerNNInteractive` server are available under a `Creative Commons Attribution Non Commercial Share Alike 4.0` license, as described in the original nnInteractive respository [here](https://github.com/MIC-DKFZ/nnInteractive/tree/master?tab=readme-ov-file#license).
