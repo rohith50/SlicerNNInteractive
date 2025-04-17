@@ -94,7 +94,42 @@ When starting the server, you can ignore the message `nnUNet_raw is not defined 
 
 ### Client side: Installation in 3D Slicer
 
-For now, `SlicerNNInteractive` is not yet available in the Extensions Manager of 3D Slicer. So, currently, the following steps are still needed to install the `SlicerNNInteractive` extension on the client side in 3D Slicer:
+1. [Download and install latest version of **3D Slicer**](https://slicer.readthedocs.io/en/latest/user_guide/getting_started.html#installing-3d-slicer)
+2. [Install **NNInteractive** extension](https://slicer.readthedocs.io/en/latest/user_guide/extensions_manager.html#install-extensions)
+3. Go to the `nnInteractive` module in Slicer and in the `Configuration` tab type in the URL of the server you set up in the [server side](#server-side) installation procedure. This should look something like `http://remote_host_name:1527` or, if you run the server locally, `http://localhost:1527`.
+
+## Usage
+
+Once you have completed the installation above, you can use `SlicerNNInteractive` as follows:
+
+1. If you haven't done so already, load in your image (e.g., through dragging your image file into Slicer).
+
+2. Click one of the Interaction Tool buttons from the Interactive Prompts tab (point, bounding box, scribble, or lasso) and place your prompt in the image. This should result in a segmentation.
+
+3. Click `Show 3D` button in the segment editor section (below the prompts section) to see the segmentation results in 3D.
+
+4. If needed, you can correct the generated segmentation with positive and negative prompts (between which you can toggle using the Positive/Negative buttons).
+
+	a) Alternatively, you can reset the current segment using the "Reset segment button".
+
+5. You can add a new segment by clicking the "Next segment" button, or clicking the "+ Add" button in the Segment Editor. You can always go back to previous segments by selecting it in the Segment Editor.
+
+### Editing an existing segment
+You can edit an existing segmentation (generated using this plugin, or obtained otherwise, such as through loading in a segmentation file), by selecting the segment in the Segment Editor. Prompts are always applied to the selected segment.
+
+### Keyboard shortcuts
+Each button in the Interactive Prompts tab has a keyboard shortcut, indicated by the underlined letter.
+
+## Common issues
+
+- When resetting the server, the Slicer extension sometimes fails silently. Reloading the plugin or restating Slicer often helps.
+
+## Contributing
+Read more on how to contribute to this repository [here](CONTRIBUTING.md), while taking into account the [code of conduct](CODE_OF_CONDUCT.md).
+
+## Development
+
+For development, `SlicerNNInteractive` can be installed directly from github, without the Extensions Manager of 3D Slicer.
 
 1. `git clone git@github.com:coendevente/SlicerNNInteractive.git` (or download the current project as a `.zip` file from GitHub).
 2. Open 3D Slicer and click the Module dropdown menu in the top left of the 3D Slicer window:
@@ -105,35 +140,6 @@ For now, `SlicerNNInteractive` is not yet available in the Extensions Manager of
 6. Go to the Module dropdown menu again and go to `Segmentation` > `SlicerNNInteractive`. This should result in the following view:
   ![First view of the Slicer extension](img/plugin_first_sight.png)
 	a) If you would like to have `SlicerNNInteractive` available in the top menu (as in the image above), go to `Edit` > `Application Settings` > `Modules` and drag `SlicerNNInteractive` from the `Modules:` list to the `Favorite Modules:` list.
-7. Configure the right server settings by going to the `Configuration` tab. Then type in the URL of the server you set up in the [server side](#server-side) installation procedure. This should look something like `http://remote_host_name:1527` or, if you run the server locally, `http://localhost:1527`.
-
-## Usage
-
-Once you have completed the installation above, you can use `SlicerNNInteractive` as follows:
-
-1. If you haven't done so already, load in your image (e.g., through dragging your image file into Slicer).
-
-2. Click one of the Interaction Tool buttons from the Interactive Prompts tab (point, bounding box, scribble, or lasso) and place your prompt in the image. This should result in a segmentation.
-
-3. If needed, you can correct the generated segmentation with positive and negative prompts (between which you can toggle using the Positive/Negative buttons).
-
-	a) Alternatively, you can reset the current segment using the "Reset segment button".
-
-4. You can add a new segment by clicking the "Next segment" button, or clicking the "+ Add" button in the Segment Editor. You can always go back to previous segments by selecting it in the Segment Editor.
-
-### Editing an existing segment
-You can edit an existing segmentation (generated using this plugin, or obtained otherwise, such as through loading in a segmentation file), by selecting the segment in the Segment Editor. Prompts are always applied to the selected segment.
-
-### Keyboard shortcuts
-Each button in the Interactive Prompts tab has a keyboard shortcut, indicated by the underlined letter.
-
-
-## Common issues
-
-- When resetting the server, the Slicer extension sometimes fails silently. Reloading the plugin or restating Slicer often helps.
-
-## Contributing
-Read more on how to contribute to this repository [here](CONTRIBUTING.md), while taking into account the [code of conduct](CODE_OF_CONDUCT.md).
 
 ## Citation
 
