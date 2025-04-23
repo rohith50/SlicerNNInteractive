@@ -1350,7 +1350,7 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
             if vtk_pts is not None:
                 vtk_pts_data = vtk_to_numpy(vtk_pts.GetData())
                 xyz = [self.ras_to_xyz(pos) for pos in vtk_pts_data]
-                print(xyz)
+                debug_print(xyz)
                 return xyz
 
             return []
