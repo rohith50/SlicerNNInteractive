@@ -13,6 +13,8 @@ import slicer
 import qt
 import vtk
 
+from vtkmodules.util.numpy_support import vtk_to_numpy
+
 from slicer.i18n import tr as _
 from slicer.i18n import translate
 from slicer.ScriptedLoadableModule import *
@@ -568,7 +570,7 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         display_node.SetColor(0, 0, 1)
         display_node.SetActiveColor(0, 0, 1)
         display_node.SetSliceProjectionColor(0, 0, 1)
-        display_node.SetGlyphScale(2)
+        display_node.SetGlyphScale(1)
         display_node.SetLineThickness(0.3)
         display_node.SetHandlesInteractive(False)
         display_node.SetTextScale(0)
@@ -701,7 +703,7 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         rasterize them into a mask, and send the mask to the server.
         """
         caller = self.prompt_types["lasso"]["node"]
-        xyzs = self.xyz_from_caller(caller, return_all=True)
+        xyzs = self.xyz_from_caller(caller, point_type="curve_point")
 
         if len(xyzs) < 3:
             return
@@ -1324,31 +1326,36 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         xyz = [int(round(c)) for c in point_Ijk[0:3]]
         return xyz
 
-    def xyz_from_caller(self, caller, lock_point=True, return_all=False):
+
+    def xyz_from_caller(self, caller, lock_point=True, point_type="control_point"):
         """
         Extract voxel coordinates from a Markups node.
-        If return_all=True, returns all points. Otherwise just the last.
+        `point_type` can be either "control_point" or "curve_point".
         """
-        n = caller.GetNumberOfControlPoints()
-        if n < 0:
-            debug_print("No control points found")
-            return
+        if point_type == "control_point":
+            n = caller.GetNumberOfControlPoints()
+            if n < 0:
+                debug_print("No control points found")
+                return
 
-        xyzs = []
-        ids = range(n) if return_all else [n - 1]
-
-        for i in ids:
             pos = [0, 0, 0]
-            caller.GetNthControlPointPosition(i, pos)
+            caller.GetNthControlPointPosition(n - 1, pos)
             if lock_point:
-                caller.SetNthControlPointLocked(i, True)
+                caller.SetNthControlPointLocked(n - 1, True)
             xyz = self.ras_to_xyz(pos)
-            xyzs.append(xyz)
+            return xyz
+        elif point_type == "curve_point":
+            vtk_pts = caller.GetCurvePointsWorld()
+            
+            if vtk_pts is not None:
+                vtk_pts_data = vtk_to_numpy(vtk_pts.GetData())
+                xyz = [self.ras_to_xyz(pos) for pos in vtk_pts_data]
+                print(xyz)
+                return xyz
 
-        if not return_all:
-            return xyzs[0]
-
-        return xyzs
+            return []
+        else:
+            raise ValueError(f'Unknown point_type {point_type}')
 
     def lasso_points_to_mask(self, points):
         """
