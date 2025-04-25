@@ -787,6 +787,9 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         """
         Uploads lasso or scribble prompt to the server.
         """
+        if np.sum(mask) == 0:
+            return
+        
         url = f"{self.server}/add_{tp}_interaction"
         try:
             buffer = io.BytesIO()
