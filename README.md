@@ -32,7 +32,7 @@ https://github.com/user-attachments/assets/c9f9ee0a-f74d-4907-aa21-484dcfd10948
 
 > You need a Linux or Windows computer with a Nvidia GPU. 10GB of VRAM is recommended. Small objects should work with <6GB. nnInteractive supports Python 3.10+
 >
-> -- [The nnInteractive README](https://github.com/MIC-DKFZ/nnInteractive?tab=readme-ov-file#prerequisites)
+> — [The nnInteractive README](https://github.com/MIC-DKFZ/nnInteractive?tab=readme-ov-file#prerequisites)
 
 The client machine _can_ be the same as the server machine.
 
@@ -51,7 +51,8 @@ This will make the server available under port `1527` on your machine. If you wo
 
 #### Option 2: Using `pip` (on Windows or Linux)
 
-##### Prerequisite steps on Windows
+<details>
+  <summary><h5>Prerequisite steps on Windows</h5></summary>
 
 Python and a pytorch package with GPU support is required. You can follow the steps below to set these up on your computer for your user:
 
@@ -78,8 +79,7 @@ To run the server again, there is no need to redo the steps above (install pixi 
 ```
 cd /d %localappdata%\nninteractive-server\.pixi\envs\default\Scripts
 ```
-
-##### Common steps for all operating systems
+</details>
 
 ```
 pip install nninteractive-slicer-server
@@ -90,7 +90,8 @@ On Windows, if the firewall may ask permission to access the port then allow it.
 
 If you would like to use a different port, say `1627`, replace `--port 1527` with `--port 1627`.
 
-When starting the server, you can ignore the message `nnUNet_raw is not defined [...] how to set this up.`. Setting up these environment variables is not necessary when using `SlicerNNInteractive`.
+> [!NOTE]  
+> When starting the server, you can ignore the message `nnUNet_raw is not defined [...] how to set this up.`. Setting up these environment variables is not necessary when using `SlicerNNInteractive`.
 
 ### Client side: Installation in 3D Slicer
 
@@ -158,4 +159,7 @@ When using `SlicerNNInteractive`, please cite:
 	[![arXiv](https://img.shields.io/badge/arXiv-2504.07991-b31b1b.svg)](https://arxiv.org/abs/2504.07991)
 
 ## License
-This repository is available under a Apache-2.0 license (see [here](LICENSE)). **Please note** that the weights that are being downloaded when running the `SlicerNNInteractive` server are available under a `Creative Commons Attribution Non Commercial Share Alike 4.0` license, as described in the original nnInteractive respository [here](https://github.com/MIC-DKFZ/nnInteractive/tree/master?tab=readme-ov-file#license).
+This repository is available under a Apache-2.0 license (see [here](LICENSE)). 
+
+> [!IMPORTANT]  
+> The weights that are being downloaded when running the `SlicerNNInteractive` server are available under a `Creative Commons Attribution Non Commercial Share Alike 4.0` license, as described in the original nnInteractive respository [here](https://github.com/MIC-DKFZ/nnInteractive/tree/master?tab=readme-ov-file#license).
