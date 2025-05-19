@@ -995,7 +995,11 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         # Mark the segmentation as modified so the UI updates
         segmentationNode.Modified()
 
-        segmentationNode.GetSegmentation().CollapseBinaryLabelmaps()
+        if segmentation_mask.sum() > 0:
+            # If we do this when segmentation_mask.sum() == 0, sometimes Slicer will throw "bogus" OOM errors
+            # (see https://github.com/coendevente/SlicerNNInteractive/issues/38)
+            segmentationNode.GetSegmentation().CollapseBinaryLabelmaps()
+        
         del segmentation_mask
 
         debug_print(f"show_segmentation took {time.time() - t0}")
