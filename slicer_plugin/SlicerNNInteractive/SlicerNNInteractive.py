@@ -243,9 +243,7 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         Checks for (and installs if needed) python packages needed by the module.
         """
         dependencies = {
-            "xxhash": "xxhash==3.5.0",
             "requests_toolbelt": "requests_toolbelt==1.0.0",
-            "SimpleITK": "SimpleITK==2.3.1",
             "skimage": "scikit-image==0.22.0",
         }
 
