@@ -38,9 +38,11 @@ The client machine _can_ be the same as the server machine.
 
 ### Server side
 
+#### Server running on Linux
+
 You can install the server side of `SlicerNNInteractive` in two different ways:
 
-#### Option 1: Using Docker (only if the server runs on Linux)
+##### Option 1: Using Docker
 
 ```
 docker pull coendevente/nninteractive-slicer-server:latest
@@ -49,14 +51,25 @@ docker run --gpus all --rm -it -p 1527:1527 coendevente/nninteractive-slicer-ser
 
 This will make the server available under port `1527` on your machine. If you would like to use a different port, say `1627`, replace `-p 1527:1527` with `-p 1627:1527`.
 
-#### Option 2: Using `pip` (on Windows or Linux)
+##### Option 2: Using `pip`
 
-<details>
-  <summary><h5>Prerequisite steps on Windows</h5></summary>
+```
+pip install nninteractive-slicer-server
+nninteractive-slicer-server --host 0.0.0.0 --port 1527
+```
+
+If you would like to use a different port, say `1627`, replace `--port 1527` with `--port 1627`.
+
+> [!NOTE]  
+> When starting the server, you can ignore the message `nnUNet_raw is not defined [...] how to set this up.`. Setting up these environment variables is not necessary when using `SlicerNNInteractive`.
+
+#### Server running on Windows
+
+##### One-time setup
 
 Python and a pytorch package with GPU support is required. You can follow the steps below to set these up on your computer for your user:
 
-1. Download pixi package manager by running this command in Terminal:
+1. Download pixi package manager by running this command in `Terminal` (to launch terminal, press the Windows button on your keyboard, type `terminal` and hit `Enter` key):
 
 ```
 powershell -ExecutionPolicy ByPass -c "irm -useb https://pixi.sh/install.ps1 | iex"
@@ -74,19 +87,17 @@ cd .pixi\envs\default\Scripts
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 ```
 
-To run the server again, there is no need to redo the steps above (install pixi and Python), just go to the install location:
+##### Start the server
+
+To start the server, there is no need to redo the steps above (install pixi and Python), just open `Terminal` and run these commands:
 
 ```
 cd /d %localappdata%\nninteractive-server\.pixi\envs\default\Scripts
-```
-</details>
-
-```
 pip install nninteractive-slicer-server
 nninteractive-slicer-server --host 0.0.0.0 --port 1527
 ```
 
-On Windows, if the firewall may ask permission to access the port then allow it.
+If the firewall asks permission to access the port then allow it.
 
 If you would like to use a different port, say `1627`, replace `--port 1527` with `--port 1627`.
 
