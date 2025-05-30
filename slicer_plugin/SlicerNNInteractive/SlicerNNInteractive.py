@@ -8,6 +8,7 @@ import time
 import importlib.util
 
 import numpy as np
+from pathlib import Path
 
 import slicer
 import qt
@@ -135,6 +136,7 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
                 "on_placed_function": self.on_point_placed,
                 "button": self.ui.pbInteractionPoint,
                 "button_text": self.ui.pbInteractionPoint.text,
+                "button_icon_filename": "point_icon.svg",
             },
             "bbox": {
                 "node_class": "vtkMRMLMarkupsROINode",
@@ -144,6 +146,7 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
                 "on_placed_function": self.on_bbox_placed,
                 "button": self.ui.pbInteractionBBox,
                 "button_text": self.ui.pbInteractionBBox.text,
+                "button_icon_filename": "bbox_icon.svg",
             },
             "lasso": {
                 "node_class": "vtkMRMLMarkupsClosedCurveNode",
@@ -153,6 +156,7 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
                 "on_placed_function": self.on_lasso_placed,
                 "button": self.ui.pbInteractionLasso,
                 "button_text": self.ui.pbInteractionLasso.text,
+                "button_icon_filename": "lasso_icon.svg",
             },
         }
 
@@ -373,6 +377,9 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
             prompt_type["node"] = node
             prompt_type["button"].clicked.connect(lambda checked, prompt_name=prompt_name: self.on_place_button_clicked(checked, prompt_name)) 
             self.all_prompt_buttons[prompt_name] = prompt_type["button"]
+            
+            icon = qt.QIcon(self.resourcePath(f"Icons/{prompt_type['button_icon_filename']}"))
+            prompt_type["button"].setIcon(icon)
 
         if (
             not skip_if_exists
@@ -444,6 +451,9 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         dn.SetSegmentOpacity2DOutline("fg", opacity)
 
         self._prev_scribble_mask = None
+            
+        icon = qt.QIcon(self.resourcePath(f"Icons/scribble_icon.svg"))
+        self.ui.pbInteractionScribble.setIcon(icon)
 
     def remove_prompt_nodes(self):
         """

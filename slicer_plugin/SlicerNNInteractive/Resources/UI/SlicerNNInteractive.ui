@@ -153,7 +153,7 @@
                  <string>Place point prompt</string>
                 </property>
                 <property name="text">
-                 <string>P&amp;oint</string>
+                 <string> P&amp;oint</string>
                 </property>
                 <property name="checkable">
                  <bool>true</bool>
@@ -178,7 +178,7 @@
                  <string>Place BBox prompt</string>
                 </property>
                 <property name="text">
-                 <string>&amp;Bounding Box</string>
+                 <string> &amp;Bounding Box</string>
                 </property>
                 <property name="checkable">
                  <bool>true</bool>
@@ -203,7 +203,7 @@
                  <string>Place a scribble prompt</string>
                 </property>
                 <property name="text">
-                 <string>&amp;Scribble</string>
+                 <string> &amp;Scribble</string>
                 </property>
                 <property name="checkable">
                  <bool>true</bool>
@@ -236,7 +236,7 @@
                    <string>Place lasso prompt. Double-click to finish.</string>
                   </property>
                   <property name="text">
-                   <string>&amp;Lasso</string>
+                   <string> &amp;Lasso</string>
                   </property>
                   <property name="checkable">
                    <bool>true</bool>
