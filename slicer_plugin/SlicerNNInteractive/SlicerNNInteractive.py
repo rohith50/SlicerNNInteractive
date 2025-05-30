@@ -919,6 +919,10 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         Creates a new empty segment in the current segmentation, increments a name,
         and sets it as the selected segment.
         """
+        # After creating a new segment, negative prompts do not make sense, so
+        # we're automatically switching the prompt type to positive.
+        self.ui.pbPromptTypePositive.click()
+        
         debug_print("doing make_new_segment")
         segmentation_node = self.get_segmentation_node()
 
@@ -954,6 +958,10 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         Clears the contents (labelmap) of the currently selected segment
         and updates the server.
         """
+        # After clearing a segment, negative prompts do not make sense, so
+        # we're automatically switching the prompt type to positive.
+        self.ui.pbPromptTypePositive.click()
+        
         _, selected_segment_id = self.get_selected_segmentation_node_and_segment_id()
 
         if selected_segment_id:
