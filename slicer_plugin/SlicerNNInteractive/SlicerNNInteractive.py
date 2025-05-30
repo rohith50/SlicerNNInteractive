@@ -990,6 +990,11 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
             if was_3d_shown:
                 segmentationNode.CreateClosedSurfaceRepresentation()
 
+        # Mark the segment as being edited (can be useful for selective saving of only modified segments)
+        segment = segmentationNode.GetSegmentation().GetSegment(selectedSegmentID)
+        if slicer.vtkSlicerSegmentationsModuleLogic.GetSegmentStatus(segment) == slicer.vtkSlicerSegmentationsModuleLogic.NotStarted:
+            slicer.vtkSlicerSegmentationsModuleLogic.SetSegmentStatus(segment, slicer.vtkSlicerSegmentationsModuleLogic.InProgress)
+
         # Mark the segmentation as modified so the UI updates
         segmentationNode.Modified()
 
