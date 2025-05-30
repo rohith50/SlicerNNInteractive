@@ -1132,6 +1132,11 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
             except requests.exceptions.ConnectionError as e:
                 response = None
                 raise RuntimeError(f"Failed to connect to server '{self.server}'. Please make sure the server is running and check the server URL in the 'Configuration' tab.")
+            except requests.exceptions.InvalidSchema as e:
+                append_text_to_error_message = ""
+                if not args[0].startswith("http://"):
+                    append_text_to_error_message = "\n\nHint: Perhaps your Server URL in the 'Configuration' tab should start with 'http://'. For example, if your server runs on localhost and port 1527, 'localhost:1527' would not work as a Server URL, while 'http://localhost:1527' would."
+                raise RuntimeError(f'{e}{append_text_to_error_message}')
 
             if response.status_code != 200:
                 status_code = response.status_code
