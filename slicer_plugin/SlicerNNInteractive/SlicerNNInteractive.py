@@ -255,8 +255,8 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         Checks for (and installs if needed) python packages needed by the module.
         """
         dependencies = {
-            "requests_toolbelt": "requests_toolbelt==1.0.0",
-            "skimage": "scikit-image==0.22.0",
+            "requests_toolbelt": "requests_toolbelt",
+            "skimage": "scikit-image",
         }
 
         for dependency in dependencies:
@@ -272,24 +272,28 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         """
         Checks if a package is installed with the correct version.
         """
-        module_name, module_version = module_name_and_version.split("==")
+        if "==" in module_name_and_version:
+            module_name, module_version = module_name_and_version.split("==")
+        else:
+            module_name = module_name_and_version
+            module_version = None
+
         spec = importlib.util.find_spec(import_name)
         if spec is None:
+            # Not installed
             return False
-        else:
-            try:
-                # For Python 3.8+; if using an older Python version, you might need to install importlib-metadata.
-                import importlib.metadata as metadata
-            except ImportError:
-                debug_print("Use Python 3.8+")
 
+        if module_version is not None:
+            import importlib.metadata as metadata
             try:
                 version = metadata.version(module_name)
                 if version != module_version:
+                    # Version mismatch
                     return False
             except metadata.PackageNotFoundError:
                 debug_print(f"Could not determine version for {module_name}.")
-            return True
+
+        return True
 
     def pip_install_wrapper(self, command, event):
         """
