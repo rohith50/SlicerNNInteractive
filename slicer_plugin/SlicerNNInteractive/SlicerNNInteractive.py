@@ -459,7 +459,7 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         self.ui.pbInteractionScribble.setIcon(icon)
 
     def is_ui_dark_or_light_mode(self):
-        # Returns whether the current appearance of the UI is dark mode (will "dark")
+        # Returns whether the current appearance of the UI is dark mode (will return "dark")
         # or light mode (will return "light")
         current_style = slicer.app.settings().value("Styles/Style")
 
