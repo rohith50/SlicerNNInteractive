@@ -8,10 +8,12 @@ import time
 import importlib.util
 
 import numpy as np
+from pathlib import Path
 
 import slicer
 import qt
 import vtk
+from qt import QApplication, QPalette
 
 from vtkmodules.util.numpy_support import vtk_to_numpy
 
@@ -147,6 +149,7 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
                 "on_placed_function": self.on_point_placed,
                 "button": self.ui.pbInteractionPoint,
                 "button_text": self.ui.pbInteractionPoint.text,
+                "button_icon_filename": "point_icon.svg",
             },
             "bbox": {
                 "node_class": "vtkMRMLMarkupsROINode",
@@ -156,6 +159,7 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
                 "on_placed_function": self.on_bbox_placed,
                 "button": self.ui.pbInteractionBBox,
                 "button_text": self.ui.pbInteractionBBox.text,
+                "button_icon_filename": "bbox_icon.svg",
             },
             "lasso": {
                 "node_class": "vtkMRMLMarkupsClosedCurveNode",
@@ -165,6 +169,7 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
                 "on_placed_function": self.on_lasso_placed,
                 "button": self.ui.pbInteractionLasso,
                 "button_text": self.ui.pbInteractionLasso.text,
+                "button_icon_filename": "lasso_icon.svg",
             },
         }
 
@@ -390,6 +395,10 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
             prompt_type["button"].clicked.connect(lambda checked, prompt_name=prompt_name: self.on_place_button_clicked(checked, prompt_name)) 
             self.all_prompt_buttons[prompt_name] = prompt_type["button"]
 
+            light_dark_mode = self.is_ui_dark_or_light_mode()
+            icon = qt.QIcon(self.resourcePath(f"Icons/prompts/{light_dark_mode}/{prompt_type['button_icon_filename']}"))
+            prompt_type["button"].setIcon(icon)
+
         if (
             not skip_if_exists
             or slicer.mrmlScene.GetFirstNodeByName(self.scribble_segment_node_name)
@@ -460,6 +469,31 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         dn.SetSegmentOpacity2DOutline("fg", opacity)
 
         self._prev_scribble_mask = None
+            
+        light_dark_mode = self.is_ui_dark_or_light_mode()
+        icon = qt.QIcon(self.resourcePath(f"Icons/prompts/{light_dark_mode}/scribble_icon.svg"))
+        self.ui.pbInteractionScribble.setIcon(icon)
+
+    def is_ui_dark_or_light_mode(self):
+        # Returns whether the current appearance of the UI is dark mode (will return "dark")
+        # or light mode (will return "light")
+        current_style = slicer.app.settings().value("Styles/Style")
+
+        if current_style == "Dark Slicer":
+            return "dark"
+        elif current_style == "Light Slicer":
+            return "light"
+        elif current_style == "Slicer":
+            app_palette = QApplication.instance().palette()
+            window_color = app_palette.color(QPalette.Active, QPalette.Window)
+            lightness = window_color.lightness()
+            dark_mode_threshold = 128
+
+            if lightness < dark_mode_threshold:
+                return "dark"
+            else:
+                return "light"
+        return "light"
 
     def remove_prompt_nodes(self):
         """
