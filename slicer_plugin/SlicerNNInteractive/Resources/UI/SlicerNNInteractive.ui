@@ -353,7 +353,15 @@
      <property name="title">
       <string>Segment Editor</string>
      </property>
-     <layout class="QVBoxLayout" name="segmentEditorLayout"/>
+     <layout class="QVBoxLayout" name="segmentEditorLayout">
+      <item>
+       <widget class="qMRMLSegmentEditorWidget" name="editor_widget">
+        <property name="defaultTerminologyEntrySettingsKey">
+         <string notr="true"/>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </widget>
    </item>
   </layout>
@@ -364,6 +372,11 @@
    <extends>QWidget</extends>
    <header>qMRMLWidget.h</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>qMRMLSegmentEditorWidget</class>
+   <extends>qMRMLWidget</extends>
+   <header>qMRMLSegmentEditorWidget.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

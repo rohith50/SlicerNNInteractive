@@ -120,7 +120,19 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         self.ui = slicer.util.childWidgetVariables(ui_widget)
         self.scribble_segment_node_name = "ScribbleSegmentNode (do not touch)"
 
-        self.add_segmentation_widget()
+        # Set up editor widget
+        self.ui.editor_widget.setMaximumNumberOfUndoStates(10)
+        self.ui.editor_widget.setMRMLScene(slicer.mrmlScene)
+        # Use the same segmentation parameter node as the Segment Editor core module
+        segment_editor_singleton_tag = "SegmentEditor"
+        self.segment_editor_node = slicer.mrmlScene.GetSingletonNode(segment_editor_singleton_tag, "vtkMRMLSegmentEditorNode")
+        if self.segment_editor_node is None:
+            self.segment_editor_node = slicer.mrmlScene.CreateNodeByClass("vtkMRMLSegmentEditorNode")
+            self.segment_editor_node.UnRegister(None)
+            self.segment_editor_node.SetSingletonTag(segment_editor_singleton_tag)
+            self.segment_editor_node = slicer.mrmlScene.AddNode(self.segment_editor_node)
+        self.ui.editor_widget.setMRMLSegmentEditorNode(self.segment_editor_node)
+        self.ui.editor_widget.setSegmentationNode(self.get_segmentation_node())
 
         # Set up style sheets for selected/unselected buttons
         self.selected_style = "background-color: #3498db; color: white"
@@ -243,8 +255,8 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         Checks for (and installs if needed) python packages needed by the module.
         """
         dependencies = {
-            "requests_toolbelt": "requests_toolbelt==1.0.0",
-            "skimage": "scikit-image==0.22.0",
+            "requests_toolbelt": "requests_toolbelt",
+            "skimage": "scikit-image",
         }
 
         for dependency in dependencies:
@@ -260,24 +272,28 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         """
         Checks if a package is installed with the correct version.
         """
-        module_name, module_version = module_name_and_version.split("==")
+        if "==" in module_name_and_version:
+            module_name, module_version = module_name_and_version.split("==")
+        else:
+            module_name = module_name_and_version
+            module_version = None
+
         spec = importlib.util.find_spec(import_name)
         if spec is None:
+            # Not installed
             return False
-        else:
-            try:
-                # For Python 3.8+; if using an older Python version, you might need to install importlib-metadata.
-                import importlib.metadata as metadata
-            except ImportError:
-                debug_print("Use Python 3.8+")
 
+        if module_version is not None:
+            import importlib.metadata as metadata
             try:
                 version = metadata.version(module_name)
                 if version != module_version:
+                    # Version mismatch
                     return False
             except metadata.PackageNotFoundError:
                 debug_print(f"Could not determine version for {module_name}.")
-            return True
+
+        return True
 
     def pip_install_wrapper(self, command, event):
         """
@@ -865,55 +881,6 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     # Segmentation-related functions
     ###############################################################################
 
-    def add_segmentation_widget(self):
-        """
-        Adds the standard Segment Editor widget to the UI of our plugin.
-        """
-        import qSlicerSegmentationsModuleWidgetsPythonQt
-
-        self.editor_widget = (
-            qSlicerSegmentationsModuleWidgetsPythonQt.qMRMLSegmentEditorWidget()
-        )
-        self.editor_widget.setMaximumNumberOfUndoStates(10)
-
-        segment_editor_singleton_tag = "SegmentEditor"
-        self.segment_editor_node = slicer.mrmlScene.GetSingletonNode(
-            segment_editor_singleton_tag, "vtkMRMLSegmentEditorNode"
-        )
-
-        if self.segment_editor_node is None:
-            self.segment_editor_node = slicer.mrmlScene.CreateNodeByClass(
-                "vtkMRMLSegmentEditorNode"
-            )
-            self.segment_editor_node.UnRegister(None)
-            self.segment_editor_node.SetSingletonTag(segment_editor_singleton_tag)
-            self.segment_editor_node = slicer.mrmlScene.AddNode(
-                self.segment_editor_node
-            )
-
-        self.editor_widget.setMRMLSegmentEditorNode(self.segment_editor_node)
-        self.editor_widget.setMRMLScene(slicer.mrmlScene)
-
-        # Add the editor widget to the segmentation group
-        if hasattr(self.ui, "segmentationGroup"):
-            # Create a new layout if needed
-            if self.ui.segmentationGroup.layout() is None:
-                layout = qt.QVBoxLayout(self.ui.segmentationGroup)
-                self.ui.segmentationGroup.setLayout(layout)
-            else:
-                layout = self.ui.segmentationGroup.layout()
-
-            # Clear any existing widgets in the layout
-            while layout.count():
-                item = layout.takeAt(0)
-                if item.widget():
-                    item.widget().setParent(None)
-
-            # Add the editor widget
-            layout.addWidget(self.editor_widget)
-        else:
-            debug_print("Could not find segmentationGroup in UI")
-
     def make_new_segment(self):
         """
         Creates a new empty segment in the current segmentation, increments a name,
@@ -947,9 +914,8 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         self.segment_editor_node.SetSelectedSegmentID(new_segment_id)
 
         # Make sure the right node is selected
-        self.editor_widget.setSegmentationNode(segmentation_node)
+        self.ui.editor_widget.setSegmentationNode(segmentation_node)
         self.segment_editor_node.SetSelectedSegmentID(new_segment_id)
-        self.editor_widget.updateWidgetFromMRML()
 
         return segmentation_node, new_segment_id
 
@@ -988,7 +954,7 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         was_3d_shown = segmentationNode.GetSegmentation().ContainsRepresentation(slicer.vtkSegmentationConverter.GetSegmentationClosedSurfaceRepresentationName())
 
         with slicer.util.RenderBlocker():  # avoid flashing of 3D view
-            self.editor_widget.saveStateForUndo()
+            self.ui.editor_widget.saveStateForUndo()
             slicer.util.updateSegmentBinaryLabelmapFromArray(
                 segmentation_mask,
                 segmentationNode,
@@ -1021,26 +987,26 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         If none exists, we create a fresh one.
         """
         # If the segmentation widget has a currently selected segmentation node, return it.
-        if hasattr(self, "editor_widget") and self.editor_widget.segmentationNode():
-            seg_node = self.editor_widget.segmentationNode()
-            if seg_node.GetName() != self.scribble_segment_node_name:
-                return seg_node
+        segmentation_node = self.ui.editor_widget.segmentationNode()
+        if segmentation_node:
+            if segmentation_node.GetName() != self.scribble_segment_node_name:
+                return segmentation_node
 
-        # Otherwise, fall back to getting the first segmentation node (or create one if none exists).
-        segmentation_node = slicer.mrmlScene.GetFirstNodeByClass(
-            "vtkMRMLSegmentationNode"
-        )
-        if (
-            segmentation_node is None
-            or segmentation_node.GetName() == self.scribble_segment_node_name
-        ):
-            segmentation_node = slicer.mrmlScene.AddNewNodeByClass(
-                "vtkMRMLSegmentationNode"
-            )
-            segmentation_node.SetReferenceImageGeometryParameterFromVolumeNode(
-                self.get_volume_node()
-            )
-            self.editor_widget.setSegmentationNode(segmentation_node)
+        # Otherwise, fall back to getting the first suitable segmentation node
+        segmentation_node = None
+        segmentation_nodes = slicer.util.getNodesByClass("vtkMRMLSegmentationNode")
+        for segmentation_node in segmentation_nodes:
+            if segmentation_node.GetName() == self.scribble_segment_node_name:
+                segmentation_node = None
+                continue
+
+        # Create new segmentation node if none suitable found
+        if not segmentation_node:
+            segmentation_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
+
+        # Set segmentation node in widget
+        self.ui.editor_widget.setSegmentationNode(segmentation_node)
+        segmentation_node.SetReferenceImageGeometryParameterFromVolumeNode(self.get_volume_node())
 
         return segmentation_node
 
@@ -1061,7 +1027,7 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         """
         Returns the ID of the segment currently selected in the segment editor.
         """
-        return self.editor_widget.mrmlSegmentEditorNode().GetSelectedSegmentID()
+        return self.ui.editor_widget.mrmlSegmentEditorNode().GetSelectedSegmentID()
 
     def get_segment_data(self):
         """
@@ -1265,7 +1231,7 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         If nothing is set then use the most recently added scalar volume
         """
         # Get volume node from segment editor widget
-        volumeNode = self.editor_widget.sourceVolumeNode()
+        volumeNode = self.ui.editor_widget.sourceVolumeNode()
 
         if not volumeNode:
             # Get the most recently added volume node
@@ -1273,7 +1239,7 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
             if volumeNodes:
                 volumeNode = volumeNodes[-1]
             # Show this volume node in the segment editor widget
-            self.editor_widget.setSourceVolumeNode(volumeNode)
+            self.ui.editor_widget.setSourceVolumeNode(volumeNode)
 
         return volumeNode
 
