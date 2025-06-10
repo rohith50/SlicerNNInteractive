@@ -134,7 +134,7 @@ Each button in the Interactive Prompts tab has a keyboard shortcut, indicated by
 
 ## Common issues
 
-- When resetting the server, the Slicer extension sometimes fails silently. Reloading the plugin or restating Slicer often helps.
+- When resetting the server, the Slicer extension sometimes fails silently. Reloading the plugin or restarting Slicer often helps.
 
 ## Contributing
 Read more on how to contribute to this repository [here](CONTRIBUTING.md), while taking into account the [code of conduct](CODE_OF_CONDUCT.md).
