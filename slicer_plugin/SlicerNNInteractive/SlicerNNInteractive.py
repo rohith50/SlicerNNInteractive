@@ -651,15 +651,18 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
                 self.point_prompt(xyz=xyz, positive_click=self.is_positive)
 
     @ensure_synched
-    def point_prompt(self, xyz=None, positive_click=False):
+    def point_prompt(self, xyz=None, positive_click=False, run_prediction=True):
         """
         Uploads point prompt to the server.
         """
         url = f"{self.server}/add_point_interaction"
 
-        seg_response = self.request_to_server(
-            url, json={"voxel_coord": xyz[::-1], "positive_click": positive_click}
-        )
+        payload = {
+            "voxel_coord": xyz[::-1],
+            "positive_click": positive_click,
+            "run_prediction": run_prediction,
+        }
+        seg_response = self.request_to_server(url, json=payload)
 
         unpacked_segmentation = self.unpack_binary_segmentation(
             seg_response.content, decompress=False
@@ -730,20 +733,19 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         self.prev_caller = caller
 
     @ensure_synched
-    def bbox_prompt(self, outer_point_one, outer_point_two, positive_click=False):
+    def bbox_prompt(self, outer_point_one, outer_point_two, positive_click=False, run_prediction=True):
         """
         Uploads BBox prompt to the server.
         """
         url = f"{self.server}/add_bbox_interaction"
 
-        seg_response = self.request_to_server(
-            url,
-            json={
-                "outer_point_one": outer_point_one[::-1],
-                "outer_point_two": outer_point_two[::-1],
-                "positive_click": positive_click,
-            },
-        )
+        payload = {
+            "outer_point_one": outer_point_one[::-1],
+            "outer_point_two": outer_point_two[::-1],
+            "positive_click": positive_click,
+            "run_prediction": run_prediction,
+        }
+        seg_response = self.request_to_server(url, json=payload)
 
         unpacked_segmentation = self.unpack_binary_segmentation(
             seg_response.content, decompress=False
@@ -866,7 +868,7 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     #  -- Lasso/scribble
     #
     @ensure_synched
-    def lasso_or_scribble_prompt(self, mask, positive_click=False, tp="lasso"):
+    def lasso_or_scribble_prompt(self, mask, positive_click=False, tp="lasso", run_prediction=True):
         """
         Uploads lasso or scribble prompt to the server.
         """
@@ -883,9 +885,8 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
             fields = {
                 "file": ("volume.npy.gz", compressed_data, "application/octet-stream"),
-                "positive_click": str(
-                    positive_click
-                ),  # Make sure to send it as a string.
+                "positive_click": str(positive_click),
+                "run_prediction": str(run_prediction),
             }
             encoder = MultipartEncoder(fields=fields)
             seg_response = self.request_to_server(
@@ -1525,5 +1526,18 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     def run_batched_interactions(self):
         """Send all accumulated interactions to the server."""
         for func, args, kwargs in self.batched_interactions:
+<<<<<<< i03bjh-codex/modify-slicernninteractive-plugin-for-interaction-accumulati
+            kwargs["run_prediction"] = False
             func(*args, **kwargs)
+
+        if self.batched_interactions:
+            seg_response = self.request_to_server(f"{self.server}/run_prediction")
+            unpacked_segmentation = self.unpack_binary_segmentation(
+                seg_response.content, decompress=False
+            )
+            self.show_segmentation(unpacked_segmentation)
+
+=======
+            func(*args, **kwargs)
+>>>>>>> main
         self.batched_interactions = []
