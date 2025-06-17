@@ -1526,6 +1526,7 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     def run_batched_interactions(self):
         """Send all accumulated interactions to the server."""
         for func, args, kwargs in self.batched_interactions:
+<<<<<<< i03bjh-codex/modify-slicernninteractive-plugin-for-interaction-accumulati
             kwargs["run_prediction"] = False
             func(*args, **kwargs)
 
@@ -1536,4 +1537,7 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
             )
             self.show_segmentation(unpacked_segmentation)
 
+=======
+            func(*args, **kwargs)
+>>>>>>> main
         self.batched_interactions = []
