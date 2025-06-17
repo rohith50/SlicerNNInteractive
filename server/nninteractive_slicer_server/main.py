@@ -189,18 +189,20 @@ class PromptManager:
         else:
             self.session.add_initial_seg_interaction(mask)
 
-    def add_point_interaction(self, point_coordinates, include_interaction):
+    def add_point_interaction(self, point_coordinates, include_interaction, run_prediction=True):
         """
         Process a point-based interaction (positive or negative).
         """
         self.session.add_point_interaction(
-            point_coordinates, include_interaction=include_interaction
+            point_coordinates,
+            include_interaction=include_interaction,
+            run_prediction=run_prediction,
         )
 
         return self.target_tensor.clone().cpu().detach().numpy()
 
     def add_bbox_interaction(
-        self, outer_point_one, outer_point_two, include_interaction
+        self, outer_point_one, outer_point_two, include_interaction, run_prediction=True
     ):
         """
         Process bounding box-based interaction.
@@ -218,28 +220,41 @@ class PromptManager:
         ]
 
         # Call the session's bounding box interaction function.
-        self.session.add_bbox_interaction(bbox, include_interaction=include_interaction)
+        self.session.add_bbox_interaction(
+            bbox,
+            include_interaction=include_interaction,
+            run_prediction=run_prediction,
+        )
 
         return self.target_tensor.clone().cpu().detach().numpy()
 
-    def add_lasso_interaction(self, mask, include_interaction):
+    def add_lasso_interaction(self, mask, include_interaction, run_prediction=True):
         """
         Process lasso-based interaction using a 3D mask.
         """
         print("Lasso mask received with shape:", mask.shape)
         self.session.add_lasso_interaction(
-            mask, include_interaction=include_interaction
+            mask,
+            include_interaction=include_interaction,
+            run_prediction=run_prediction,
         )
         return self.target_tensor.clone().cpu().detach().numpy()
 
-    def add_scribble_interaction(self, mask, include_interaction):
+    def add_scribble_interaction(self, mask, include_interaction, run_prediction=True):
         """
         Process scribble-based interaction using a 3D mask.
         """
         print("Scribble mask received with shape:", mask.shape)
         self.session.add_scribble_interaction(
-            mask, include_interaction=include_interaction
+            mask,
+            include_interaction=include_interaction,
+            run_prediction=run_prediction,
         )
+
+    def run_prediction(self):
+        """Run a forward pass using current interactions."""
+        self.session._predict()
+        return self.target_tensor.clone().cpu().detach().numpy()
         return self.target_tensor.clone().cpu().detach().numpy()
 
 
@@ -296,6 +311,7 @@ async def upload_segment(
 class PointParams(BaseModel):
     voxel_coord: list[int]
     positive_click: bool
+    run_prediction: bool = True
 
 
 @app.post("/add_point_interaction")
@@ -310,7 +326,9 @@ async def add_point_interaction(params: PointParams):
     t = time.time()
 
     seg_result = PROMPT_MANAGER.add_point_interaction(
-        point_coordinates=params.voxel_coord, include_interaction=params.positive_click
+        point_coordinates=params.voxel_coord,
+        include_interaction=params.positive_click,
+        run_prediction=params.run_prediction,
     )
     compressed_bin = segmentation_binary(seg_result, compress=True)
     print(f"Server whole infer function time: {time.time() - t}")
@@ -329,6 +347,7 @@ class BBoxParams(BaseModel):
     outer_point_one: list[int]
     outer_point_two: list[int]
     positive_click: bool
+    run_prediction: bool = True
 
 
 @app.post("/add_bbox_interaction")
@@ -346,6 +365,7 @@ async def add_bbox_interaction(params: BBoxParams):
         params.outer_point_one,
         params.outer_point_two,
         include_interaction=params.positive_click,
+        run_prediction=params.run_prediction,
     )
 
     segmentation_binary_data = segmentation_binary(seg_result, compress=True)
@@ -365,7 +385,9 @@ async def add_bbox_interaction(params: BBoxParams):
 
 @app.post("/add_lasso_interaction")
 async def add_lasso_interaction(
-    file: UploadFile = File(...), positive_click: str = Form(...)
+    file: UploadFile = File(...),
+    positive_click: str = Form(...),
+    run_prediction: str = Form("true"),
 ):
     """
     Receives a gzipped npy mask + positive/negative. Treated as a 'lasso' 3D mask.
@@ -376,10 +398,13 @@ async def add_lasso_interaction(
     
     file_bytes = await file.read()
     mask, positive_click_bool = process_mask_and_click_input(file_bytes, positive_click)
+    run_pred_bool = run_prediction.lower() in ["true", "1", "yes"]
 
     # Process the lasso interaction.
     seg_result = PROMPT_MANAGER.add_lasso_interaction(
-        mask, include_interaction=positive_click_bool
+        mask,
+        include_interaction=positive_click_bool,
+        run_prediction=run_pred_bool,
     )
 
     # Convert the segmentation result to compressed binary data.
@@ -397,7 +422,9 @@ async def add_lasso_interaction(
 #
 @app.post("/add_scribble_interaction")
 async def add_scribble_interaction(
-    file: UploadFile = File(...), positive_click: str = Form(...)
+    file: UploadFile = File(...),
+    positive_click: str = Form(...),
+    run_prediction: str = Form("true"),
 ):
     """
     Receives a scribble mask + positive/negative. Updates model, returns updated segmentation.
@@ -410,14 +437,36 @@ async def add_scribble_interaction(
     file_bytes = await file.read()
 
     mask, positive_click_bool = process_mask_and_click_input(file_bytes, positive_click)
+    run_pred_bool = run_prediction.lower() in ["true", "1", "yes"]
 
     seg_result = PROMPT_MANAGER.add_scribble_interaction(
-        mask, include_interaction=positive_click_bool
+        mask,
+        include_interaction=positive_click_bool,
+        run_prediction=run_pred_bool,
     )
 
     # Convert the segmentation result to compressed binary data.
     segmentation_binary_data = segmentation_binary(seg_result, compress=True)
 
+    return Response(
+        content=segmentation_binary_data,
+        media_type="application/octet-stream",
+        headers={"Content-Encoding": "gzip"},
+    )
+
+
+#
+# -- Run accumulated interactions
+#
+@app.post("/run_prediction")
+async def run_prediction():
+    """Trigger a forward pass using all current interactions."""
+    error = get_error_if_img_not_set()
+    if error is not None:
+        return error
+
+    seg_result = PROMPT_MANAGER.run_prediction()
+    segmentation_binary_data = segmentation_binary(seg_result, compress=True)
     return Response(
         content=segmentation_binary_data,
         media_type="application/octet-stream",
