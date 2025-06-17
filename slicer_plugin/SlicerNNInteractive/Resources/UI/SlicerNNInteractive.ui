@@ -273,6 +273,29 @@
           </widget>
          </item>
          <item>
+          <widget class="QGroupBox" name="batchModeGroup">
+           <property name="title">
+            <string>Batch Mode</string>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayout_batch">
+            <item>
+             <widget class="QCheckBox" name="cbBatchMode">
+              <property name="text">
+               <string>Accumulate interactions</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pbRunBatch">
+              <property name="text">
+               <string>Run accumulated interactions</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
           <widget class="QGroupBox" name="uploadProgressGroup">
            <property name="title">
             <string>Upload progress:</string>
