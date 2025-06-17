@@ -182,6 +182,7 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
         _ = self.get_current_segment_id()
         self.previous_states = {}
+        self.batched_interactions = []
 
     def init_ui_functionality(self):
         """
@@ -217,6 +218,9 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         self.ui.pbInteractionScribble.clicked.connect(self.on_scribble_clicked)
 
         self.ui.pbInteractionLassoCancel.clicked.connect(self.on_lasso_cancel_clicked)
+
+        self.ui.pbRunBatch.clicked.connect(self.run_batched_interactions)
+        self.ui.cbBatchMode.setChecked(False)
 
         self.addObserver(slicer.app.applicationLogic().GetInteractionNode(), 
             slicer.vtkMRMLInteractionNode.InteractionModeChangedEvent, self.on_interaction_node_modified)
@@ -639,7 +643,12 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
         volume_node = self.get_volume_node()
         if volume_node:
-            self.point_prompt(xyz=xyz, positive_click=self.is_positive)
+            if self.batch_mode:
+                self.batched_interactions.append(
+                    (self.point_prompt, [], {"xyz": xyz, "positive_click": self.is_positive})
+                )
+            else:
+                self.point_prompt(xyz=xyz, positive_click=self.is_positive)
 
     @ensure_synched
     def point_prompt(self, xyz=None, positive_click=False):
@@ -688,11 +697,24 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
                     xyz[2] * 2 - outer_point_two[2],
                 ]
 
-                self.bbox_prompt(
-                    outer_point_one=outer_point_one,
-                    outer_point_two=outer_point_two,
-                    positive_click=self.is_positive,
-                )
+                if self.batch_mode:
+                    self.batched_interactions.append(
+                        (
+                            self.bbox_prompt,
+                            [],
+                            {
+                                "outer_point_one": outer_point_one,
+                                "outer_point_two": outer_point_two,
+                                "positive_click": self.is_positive,
+                            },
+                        )
+                    )
+                else:
+                    self.bbox_prompt(
+                        outer_point_one=outer_point_one,
+                        outer_point_two=outer_point_two,
+                        positive_click=self.is_positive,
+                    )
 
                 def _next():
                     self.setup_prompts()
@@ -760,9 +782,22 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
         volume_node = self.get_volume_node()
         if volume_node:
-            self.lasso_or_scribble_prompt(
-                mask=mask, positive_click=self.is_positive, tp="lasso"
-            )
+            if self.batch_mode:
+                self.batched_interactions.append(
+                    (
+                        self.lasso_or_scribble_prompt,
+                        [],
+                        {
+                            "mask": mask,
+                            "positive_click": self.is_positive,
+                            "tp": "lasso",
+                        },
+                    )
+                )
+            else:
+                self.lasso_or_scribble_prompt(
+                    mask=mask, positive_click=self.is_positive, tp="lasso"
+                )
 
             def _next():
                 self.setup_prompts()
@@ -904,9 +939,22 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         diff_mask = mask - prev_scribble_mask
         self._prev_scribble_mask = mask
 
-        self.lasso_or_scribble_prompt(
-            mask=diff_mask, positive_click=self.is_positive, tp="scribble"
-        )
+        if self.batch_mode:
+            self.batched_interactions.append(
+                (
+                    self.lasso_or_scribble_prompt,
+                    [],
+                    {
+                        "mask": diff_mask,
+                        "positive_click": self.is_positive,
+                        "tp": "scribble",
+                    },
+                )
+            )
+        else:
+            self.lasso_or_scribble_prompt(
+                mask=diff_mask, positive_click=self.is_positive, tp="scribble"
+            )
 
         self.ui.pbInteractionScribble.click()  # turn it off
         self.ui.pbInteractionScribble.click()  # turn it on
@@ -1434,6 +1482,11 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         """
         return self.ui.pbPromptTypePositive.isChecked()
 
+    @property
+    def batch_mode(self):
+        """Return True if interactions should be accumulated."""
+        return self.ui.cbBatchMode.isChecked()
+
     def on_prompt_type_positive_clicked(self, checked=False):
         """
         Called when user presses the "Positive" prompt button.
@@ -1468,3 +1521,9 @@ class SlicerNNInteractiveWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
             self.on_prompt_type_negative_clicked()
         else:
             self.on_prompt_type_positive_clicked()
+
+    def run_batched_interactions(self):
+        """Send all accumulated interactions to the server."""
+        for func, args, kwargs in self.batched_interactions:
+            func(*args, **kwargs)
+        self.batched_interactions = []
